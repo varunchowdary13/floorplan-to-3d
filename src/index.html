@@ -1,0 +1,811 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>FloorPlan to 3D | Architectural Converter</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    
+    body {
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+      background: #0f0f14;
+      color: #fff;
+      overflow: hidden;
+    }
+    
+    .app {
+      display: grid;
+      grid-template-columns: 380px 1fr;
+      height: 100vh;
+    }
+    
+    /* Sidebar */
+    .sidebar {
+      background: linear-gradient(180deg, #1a1a24 0%, #0f0f14 100%);
+      border-right: 1px solid rgba(255,255,255,0.06);
+      padding: 24px;
+      display: flex;
+      flex-direction: column;
+      gap: 20px;
+      overflow-y: auto;
+    }
+    
+    .logo {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      padding-bottom: 20px;
+      border-bottom: 1px solid rgba(255,255,255,0.06);
+    }
+    
+    .logo-icon {
+      width: 52px;
+      height: 52px;
+      background: linear-gradient(135deg, #f59e0b, #ef4444);
+      border-radius: 14px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 26px;
+    }
+    
+    .logo h1 {
+      font-size: 22px;
+      font-weight: 700;
+      letter-spacing: -0.5px;
+    }
+    
+    .logo p {
+      font-size: 12px;
+      color: rgba(255,255,255,0.4);
+    }
+    
+    /* Section */
+    .section {
+      background: rgba(255,255,255,0.03);
+      border: 1px solid rgba(255,255,255,0.06);
+      border-radius: 14px;
+      padding: 18px;
+    }
+    
+    .section-title {
+      font-size: 11px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      color: rgba(255,255,255,0.4);
+      margin-bottom: 14px;
+    }
+    
+    /* Drop Zone */
+    .drop-zone {
+      border: 2px dashed rgba(255,255,255,0.1);
+      border-radius: 12px;
+      padding: 28px;
+      text-align: center;
+      cursor: pointer;
+      transition: all 0.25s ease;
+      background: rgba(255,255,255,0.02);
+    }
+    
+    .drop-zone:hover, .drop-zone.active {
+      border-color: #f59e0b;
+      background: rgba(245, 158, 11, 0.08);
+    }
+    
+    .drop-zone-icon { font-size: 42px; margin-bottom: 10px; }
+    .drop-zone p { color: rgba(255,255,255,0.6); font-size: 14px; }
+    .drop-zone span { color: #f59e0b; }
+    
+    /* Preview */
+    .preview-img {
+      width: 100%;
+      height: 160px;
+      object-fit: contain;
+      border-radius: 10px;
+      background: #000;
+      display: none;
+    }
+    
+    .preview-img.visible { display: block; }
+    
+    /* Controls */
+    .control-group { margin-bottom: 16px; }
+    
+    .control-label {
+      display: flex;
+      justify-content: space-between;
+      font-size: 13px;
+      color: rgba(255,255,255,0.7);
+      margin-bottom: 8px;
+    }
+    
+    .control-label span:last-child { color: #f59e0b; font-weight: 600; }
+    
+    input[type="range"] {
+      width: 100%;
+      height: 6px;
+      border-radius: 3px;
+      background: rgba(255,255,255,0.1);
+      appearance: none;
+      cursor: pointer;
+    }
+    
+    input[type="range"]::-webkit-slider-thumb {
+      appearance: none;
+      width: 18px;
+      height: 18px;
+      border-radius: 50%;
+      background: #f59e0b;
+      cursor: pointer;
+      box-shadow: 0 2px 8px rgba(245, 158, 11, 0.4);
+    }
+    
+    input[type="color"] {
+      width: 100%;
+      height: 36px;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+      background: transparent;
+    }
+    
+    /* Buttons */
+    .btn {
+      width: 100%;
+      padding: 14px;
+      border: none;
+      border-radius: 10px;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.25s ease;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+    }
+    
+    .btn-primary {
+      background: linear-gradient(135deg, #f59e0b, #ef4444);
+      color: white;
+    }
+    
+    .btn-primary:hover:not(:disabled) {
+      transform: translateY(-2px);
+      box-shadow: 0 8px 24px rgba(245, 158, 11, 0.35);
+    }
+    
+    .btn-primary:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+    
+    .btn-secondary {
+      background: rgba(255,255,255,0.08);
+      border: 1px solid rgba(255,255,255,0.1);
+      color: white;
+    }
+    
+    .btn-secondary:hover { background: rgba(255,255,255,0.12); }
+    
+    /* Status */
+    .status {
+      padding: 14px;
+      border-radius: 10px;
+      font-size: 13px;
+      display: none;
+    }
+    
+    .status.visible { display: block; }
+    .status.processing { background: rgba(245, 158, 11, 0.1); border: 1px solid rgba(245, 158, 11, 0.3); color: #fbbf24; }
+    .status.success { background: rgba(16, 185, 129, 0.1); border: 1px solid rgba(16, 185, 129, 0.3); color: #34d399; }
+    .status.error { background: rgba(239, 68, 68, 0.1); border: 1px solid rgba(239, 68, 68, 0.3); color: #f87171; }
+    
+    /* Main View */
+    .main-view {
+      position: relative;
+      background: #08080c;
+      display: flex;
+      flex-direction: column;
+    }
+    
+    .main-header {
+      padding: 16px 24px;
+      background: rgba(255,255,255,0.03);
+      border-bottom: 1px solid rgba(255,255,255,0.05);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    
+    .view-tabs {
+      display: flex;
+      gap: 8px;
+    }
+    
+    .view-tab {
+      padding: 8px 16px;
+      border-radius: 8px;
+      font-size: 13px;
+      font-weight: 500;
+      cursor: pointer;
+      background: transparent;
+      color: rgba(255,255,255,0.5);
+      border: none;
+      transition: all 0.2s;
+    }
+    
+    .view-tab.active {
+      background: rgba(245, 158, 11, 0.15);
+      color: #f59e0b;
+    }
+    
+    .canvas-container {
+      flex: 1;
+      position: relative;
+      overflow: hidden;
+    }
+    
+    #floorplanCanvas, #modelCanvas {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+    }
+    
+    #modelCanvas { display: none; }
+    #modelCanvas.visible { display: block; }
+    #floorplanCanvas.hidden { display: none; }
+    
+    .empty-state {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      text-align: center;
+      color: rgba(255,255,255,0.25);
+    }
+    
+    .empty-state-icon { font-size: 72px; margin-bottom: 16px; opacity: 0.4; }
+    .empty-state p { font-size: 15px; }
+    
+    /* View Controls */
+    .view-controls {
+      position: absolute;
+      bottom: 20px;
+      right: 20px;
+      display: flex;
+      gap: 8px;
+    }
+    
+    .view-btn {
+      width: 42px;
+      height: 42px;
+      background: rgba(255,255,255,0.08);
+      border: 1px solid rgba(255,255,255,0.1);
+      border-radius: 10px;
+      color: white;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 18px;
+      transition: all 0.2s;
+    }
+    
+    .view-btn:hover { background: rgba(255,255,255,0.15); }
+    .view-btn.active { background: #f59e0b; border-color: #f59e0b; }
+    
+    /* Instructions */
+    .instructions {
+      position: absolute;
+      bottom: 20px;
+      left: 20px;
+      background: rgba(0,0,0,0.6);
+      backdrop-filter: blur(10px);
+      padding: 12px 16px;
+      border-radius: 10px;
+      font-size: 12px;
+      color: rgba(255,255,255,0.6);
+      max-width: 280px;
+    }
+    
+    .instructions strong { color: #f59e0b; }
+    
+    /* Loading */
+    .spinner {
+      width: 16px;
+      height: 16px;
+      border: 2px solid transparent;
+      border-top-color: currentColor;
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+      display: inline-block;
+    }
+    
+    @keyframes spin { to { transform: rotate(360deg); } }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <!-- Sidebar -->
+    <aside class="sidebar">
+      <div class="logo">
+        <div class="logo-icon">🏠</div>
+        <div>
+          <h1>FloorPlan 3D</h1>
+          <p>Architectural converter</p>
+        </div>
+      </div>
+      
+      <!-- Upload -->
+      <div class="section">
+        <div class="section-title">1. Upload Floor Plan</div>
+        <div class="drop-zone" id="dropZone">
+          <div class="drop-zone-icon">📐</div>
+          <p>Drop your floor plan or <span>browse</span></p>
+        </div>
+        <img id="previewImg" class="preview-img" alt="Floor plan">
+      </div>
+      
+      <!-- Settings -->
+      <div class="section">
+        <div class="section-title">2. Adjust Settings</div>
+        
+        <div class="control-group">
+          <div class="control-label">
+            <span>Wall Height</span>
+            <span id="wallHeightVal">3.0m</span>
+          </div>
+          <input type="range" id="wallHeight" min="2" max="6" step="0.1" value="3">
+        </div>
+        
+        <div class="control-group">
+          <div class="control-label">
+            <span>Wall Thickness</span>
+            <span id="wallThicknessVal">0.3m</span>
+          </div>
+          <input type="range" id="wallThickness" min="0.1" max="0.5" step="0.05" value="0.3">
+        </div>
+        
+        <div class="control-group">
+          <div class="control-label"><span>Wall Color</span></div>
+          <input type="color" id="wallColor" value="#e5e5e5">
+        </div>
+        
+        <div class="control-group">
+          <div class="control-label"><span>Background</span></div>
+          <input type="color" id="bgColor" value="#1e293b">
+        </div>
+      </div>
+      
+      <!-- Actions -->
+      <button class="btn btn-primary" id="generateBtn" disabled>
+        <span>🏗️</span>
+        <span>Generate 3D Model</span>
+      </button>
+      
+      <button class="btn btn-secondary" id="exportBtn" style="display:none;">
+        <span>💾</span>
+        <span>Export Model</span>
+      </button>
+      
+      <div class="status" id="status"></div>
+    </aside>
+    
+    <!-- Main View -->
+    <main class="main-view">
+      <div class="main-header">
+        <div class="view-tabs">
+          <button class="view-tab active" data-view="floorplan">2D Plan</button>
+          <button class="view-tab" data-view="3d">3D View</button>
+        </div>
+      </div>
+      
+      <div class="canvas-container">
+        <canvas id="floorplanCanvas"></canvas>
+        <canvas id="modelCanvas"></canvas>
+        
+        <div class="empty-state" id="emptyState">
+          <div class="empty-state-icon">📐</div>
+          <p>Upload a floor plan to get started</p>
+        </div>
+        
+        <div class="instructions" id="instructions" style="display:none;">
+          <strong>Tip:</strong> Click and drag to rotate • Scroll to zoom
+        </div>
+        
+        <div class="view-controls" style="display:none;" id="viewControls">
+          <button class="view-btn active" id="rotateMode" title="Rotate">🔄</button>
+          <button class="view-btn" id="zoomMode" title="Zoom">🔍</button>
+          <button class="view-btn" id="resetView" title="Reset">↺</button>
+        </div>
+      </div>
+    </main>
+  </div>
+  
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+  <script>
+    // State
+    let floorPlanImage = null;
+    let detectedLines = [];
+    let detectedWalls = [];
+    let currentView = 'floorplan';
+    let is3DGenerated = false;
+    
+    // Three.js
+    let scene, camera, renderer, house;
+    let isRotating = true;
+    let isDragging = false;
+    let prevMouse = { x: 0, y: 0 };
+    
+    // Elements
+    const dropZone = document.getElementById('dropZone');
+    const previewImg = document.getElementById('previewImg');
+    const generateBtn = document.getElementById('generateBtn');
+    const exportBtn = document.getElementById('exportBtn');
+    const status = document.getElementById('status');
+    const floorplanCanvas = document.getElementById('floorplanCanvas');
+    const modelCanvas = document.getElementById('modelCanvas');
+    const emptyState = document.getElementById('emptyState');
+    const instructions = document.getElementById('instructions');
+    const viewControls = document.getElementById('viewControls');
+    const wallHeight = document.getElementById('wallHeight');
+    const wallThickness = document.getElementById('wallThickness');
+    const wallColor = document.getElementById('wallColor');
+    const bgColor = document.getElementById('bgColor');
+    
+    // Setup
+    function setupFloorplanCanvas() {
+      const container = floorplanCanvas.parentElement;
+      floorplanCanvas.width = container.clientWidth;
+      floorplanCanvas.height = container.clientHeight;
+      drawFloorplan();
+    }
+    
+    function drawFloorplan() {
+      const ctx = floorplanCanvas.getContext('2d');
+      const w = floorplanCanvas.width;
+      const h = floorplanCanvas.height;
+      
+      ctx.fillStyle = '#0f172a';
+      ctx.fillRect(0, 0, w, h);
+      
+      if (!floorPlanImage) return;
+      
+      // Draw image scaled to fit
+      const scale = Math.min(w / floorPlanImage.width, h / floorPlanImage.height) * 0.85;
+      const x = (w - floorPlanImage.width * scale) / 2;
+      const y = (h - floorPlanImage.height * scale) / 2;
+      
+      ctx.drawImage(floorPlanImage, x, y, floorPlanImage.width * scale, floorPlanImage.height * scale);
+      
+      // Draw detected lines
+      if (detectedLines.length > 0) {
+        ctx.strokeStyle = '#f59e0b';
+        ctx.lineWidth = 2;
+        detectedLines.forEach(line => {
+          ctx.beginPath();
+          ctx.moveTo(x + line.x1 * scale, y + line.y1 * scale);
+          ctx.lineTo(x + line.x2 * scale, y + line.y2 * scale);
+          ctx.stroke();
+        });
+      }
+    }
+    
+    function initThreeJS() {
+      const container = modelCanvas.parentElement;
+      
+      scene = new THREE.Scene();
+      scene.background = new THREE.Color(bgColor.value);
+      
+      camera = new THREE.PerspectiveCamera(45, container.clientWidth / container.clientHeight, 0.1, 1000);
+      camera.position.set(15, 12, 15);
+      camera.lookAt(0, 0, 0);
+      
+      renderer = new THREE.WebGLRenderer({ canvas: modelCanvas, antialias: true });
+      renderer.setSize(container.clientWidth, container.clientHeight);
+      renderer.setPixelRatio(window.devicePixelRatio);
+      renderer.shadowMap.enabled = true;
+      
+      // Lights
+      const ambient = new THREE.AmbientLight(0xffffff, 0.6);
+      scene.add(ambient);
+      
+      const directional = new THREE.DirectionalLight(0xffffff, 0.8);
+      directional.position.set(10, 20, 10);
+      directional.castShadow = true;
+      scene.add(directional);
+      
+      // Ground
+      const groundGeo = new THREE.PlaneGeometry(30, 30);
+      const groundMat = new THREE.MeshStandardMaterial({ color: 0x334155 });
+      const ground = new THREE.Mesh(groundGeo, groundMat);
+      ground.rotation.x = -Math.PI / 2;
+      ground.position.y = -0.01;
+      ground.receiveShadow = true;
+      scene.add(ground);
+      
+      animate3D();
+    }
+    
+    function animate3D() {
+      requestAnimationFrame(animate3D);
+      
+      if (house && isRotating) {
+        house.rotation.y += 0.003;
+      }
+      
+      renderer.render(scene, camera);
+    }
+    
+    function generate3DModel() {
+      if (house) scene.remove(house);
+      
+      house = new THREE.Group();
+      
+      const h = parseFloat(wallHeight.value);
+      const t = parseFloat(wallThickness.value);
+      const color = wallColor.value;
+      
+      const wallMat = new THREE.MeshStandardMaterial({ 
+        color: color,
+        roughness: 0.8,
+        metalness: 0.1
+      });
+      
+      // Generate walls from detected lines or create default box
+      if (detectedLines.length > 0) {
+        detectedLines.forEach(line => {
+          const length = Math.sqrt(
+            Math.pow(line.x2 - line.x1, 2) + 
+            Math.pow(line.y2 - line.y1, 2)
+          );
+          
+          if (length > 10) { // Filter short lines
+            const centerX = (line.x1 + line.x2) / 2;
+            const centerY = h / 2;
+            const centerZ = (line.y1 + line.y2) / 2;
+            
+            const angle = Math.atan2(line.y2 - line.y1, line.x2 - line.x1);
+            
+            const wallGeo = new THREE.BoxGeometry(length, h, t);
+            const wall = new THREE.Mesh(wallGeo, wallMat);
+            
+            wall.position.set(centerX, centerY, centerZ);
+            wall.rotation.y = -angle;
+            wall.castShadow = true;
+            wall.receiveShadow = true;
+            
+            house.add(wall);
+          }
+        });
+      } else {
+        // Default: simple room
+        const roomSize = 8;
+        const wallGeo = new THREE.BoxGeometry(roomSize, h, t);
+        
+        // 4 walls
+        const positions = [
+          [0, h/2, -roomSize/2],
+          [0, h/2, roomSize/2],
+          [-roomSize/2, h/2, 0],
+          [roomSize/2, h/2, 0]
+        ];
+        
+        const rotations = [0, 0, Math.PI/2, Math.PI/2];
+        
+        positions.forEach((pos, i) => {
+          const wall = new THREE.Mesh(wallGeo, wallMat);
+          wall.position.set(...pos);
+          wall.rotation.y = rotations[i];
+          wall.castShadow = true;
+          house.add(wall);
+        });
+      }
+      
+      scene.add(house);
+      
+      // Reset camera
+      camera.position.set(15, 12, 15);
+      camera.lookAt(0, 0, 0);
+    }
+    
+    // Event Handlers
+    dropZone.addEventListener('click', async () => {
+      const path = await window.electronAPI.selectImage();
+      if (path) {
+        loadImage(path);
+      }
+    });
+    
+    dropZone.addEventListener('dragover', (e) => {
+      e.preventDefault();
+      dropZone.classList.add('active');
+    });
+    
+    dropZone.addEventListener('dragleave', () => {
+      dropZone.classList.remove('active');
+    });
+    
+    function loadImage(path) {
+      const img = new Image();
+      img.onload = () => {
+        floorPlanImage = img;
+        previewImg.src = path;
+        previewImg.classList.add('visible');
+        emptyState.style.display = 'none';
+        
+        setupFloorplanCanvas();
+        
+        // Process with OpenCV
+        showStatus('Detecting walls...', 'processing');
+        
+        window.electronAPI.processFloorplan(path, {}).then(result => {
+          if (result.error) {
+            showStatus('Using default layout', 'processing');
+            detectedLines = [];
+          } else {
+            detectedLines = result.lines || [];
+            detectedWalls = result.walls || [];
+          }
+          
+          drawFloorplan();
+          showStatus('Floor plan loaded! Click Generate', 'success');
+          generateBtn.disabled = false;
+        }).catch(err => {
+          showStatus('Loaded image (detection unavailable)', 'success');
+          generateBtn.disabled = false;
+        });
+      };
+      img.src = 'file://' + path;
+    }
+    
+    generateBtn.addEventListener('click', () => {
+      showStatus('Generating 3D model...', 'processing');
+      
+      setTimeout(() => {
+        generate3DModel();
+        
+        // Switch to 3D view
+        document.querySelector('[data-view="3d"]').click();
+        
+        showStatus('3D model generated!', 'success');
+        exportBtn.style.display = 'flex';
+        instructions.style.display = 'block';
+        viewControls.style.display = 'flex';
+      }, 500);
+    });
+    
+    exportBtn.addEventListener('click', async () => {
+      // Simple OBJ export
+      let objContent = '# FloorPlan 3D Export\n\n';
+      
+      if (house) {
+        house.traverse(child => {
+          if (child.isMesh) {
+            const pos = child.geometry.attributes.position;
+            const matrix = child.matrixWorld;
+            
+            objContent += `o Wall\n`;
+            
+            for (let i = 0; i < pos.count; i++) {
+              const v = new THREE.Vector3(pos.getX(i), pos.getY(i), pos.getZ(i));
+              v.applyMatrix4(matrix);
+              objContent += `v ${v.x.toFixed(4)} ${v.y.toFixed(4)} ${v.z.toFixed(4)}\n`;
+            }
+            
+            const indices = child.geometry.index;
+            if (indices) {
+              for (let i = 0; i < indices.count; i += 3) {
+                objContent += `f ${indices.getX(i)+1} ${indices.getX(i+1)+1} ${indices.getX(i+2)+1}\n`;
+              }
+            }
+          }
+        });
+      }
+      
+      await window.electronAPI.export3D(objContent, 'obj');
+      showStatus('Model exported!', 'success');
+    });
+    
+    // View tabs
+    document.querySelectorAll('.view-tab').forEach(tab => {
+      tab.addEventListener('click', () => {
+        document.querySelectorAll('.view-tab').forEach(t => t.classList.remove('active'));
+        tab.classList.add('active');
+        
+        const view = tab.dataset.view;
+        
+        if (view === 'floorplan') {
+          floorplanCanvas.classList.remove('hidden');
+          modelCanvas.classList.remove('visible');
+          instructions.style.display = 'none';
+        } else {
+          floorplanCanvas.classList.add('hidden');
+          modelCanvas.classList.add('visible');
+          instructions.style.display = 'block';
+        }
+      });
+    });
+    
+    // View controls
+    document.getElementById('rotateMode').addEventListener('click', function() {
+      isRotating = !isRotating;
+      this.classList.toggle('active', isRotating);
+    });
+    
+    document.getElementById('resetView').addEventListener('click', () => {
+      camera.position.set(15, 12, 15);
+      camera.lookAt(0, 0, 0);
+      if (house) house.rotation.y = 0;
+    });
+    
+    // Mouse controls for 3D
+    modelCanvas.addEventListener('mousedown', (e) => {
+      isDragging = true;
+      prevMouse = { x: e.clientX, y: e.clientY };
+    });
+    
+    modelCanvas.addEventListener('mousemove', (e) => {
+      if (!isDragging || !house) return;
+      
+      const dx = e.clientX - prevMouse.x;
+      const dy = e.clientY - prevMouse.y;
+      
+      house.rotation.y += dx * 0.01;
+      house.rotation.x += dy * 0.01;
+      
+      prevMouse = { x: e.clientX, y: e.clientY };
+    });
+    
+    modelCanvas.addEventListener('mouseup', () => isDragging = false);
+    modelCanvas.addEventListener('wheel', (e) => {
+      e.preventDefault();
+      camera.position.z += e.deltaY * 0.02;
+      camera.position.z = Math.max(5, Math.min(30, camera.position.z));
+    });
+    
+    // Settings changes
+    wallHeight.addEventListener('input', () => {
+      document.getElementById('wallHeightVal').textContent = wallHeight.value + 'm';
+      if (is3DGenerated) generate3DModel();
+    });
+    
+    wallThickness.addEventListener('input', () => {
+      document.getElementById('wallThicknessVal').textContent = wallThickness.value + 'm';
+      if (is3DGenerated) generate3DModel();
+    });
+    
+    wallColor.addEventListener('input', () => {
+      if (is3DGenerated) generate3DModel();
+    });
+    
+    bgColor.addEventListener('input', () => {
+      if (scene) scene.background = new THREE.Color(bgColor.value);
+    });
+    
+    function showStatus(msg, type) {
+      status.textContent = msg;
+      status.className = 'status visible ' + type;
+    }
+    
+    // Initialize
+    window.addEventListener('resize', () => {
+      setupFloorplanCanvas();
+      if (scene) {
+        const container = modelCanvas.parentElement;
+        camera.aspect = container.clientWidth / container.clientHeight;
+        camera.updateProjectionMatrix();
+        renderer.setSize(container.clientWidth, container.clientHeight);
+      }
+    });
+    
+    initThreeJS();
+    setupFloorplanCanvas();
+  </script>
+</body>
+</html>
