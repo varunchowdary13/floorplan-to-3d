@@ -1,7 +1,7 @@
 {
-  "name": "floorplan-3d-builder",
+  "name": "floorplan3d-pro",
   "version": "1.0.0",
-  "description": "Floor plan builder + 3D converter for architectural design",
+  "description": "Civil architecture design tool - Blender for civil engineers",
   "main": "src/main.js",
   "scripts": {
     "start": "electron .",
@@ -17,8 +17,8 @@
     "electron-log": "^5.0.0"
   },
   "build": {
-    "appId": "com.varun.floorplan3d",
-    "productName": "FloorPlan 3D Builder",
+    "appId": "com.varun.floorplan3dpro",
+    "productName": "FloorPlan 3D Pro",
     "directories": { "output": "dist" },
     "win": { "target": "nsis" },
     "files": ["src/**/*"]

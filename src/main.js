@@ -5,6 +5,17 @@ const log = require('electron-log');
 
 log.initialize();
 
+// User data path for storing imports
+const userDataPath = app.getPath('userData');
+const importsPath = path.join(userDataPath, 'imports');
+
+if (!fs.existsSync(importsPath)) {
+  fs.mkdirSync(importsPath, { recursive: true });
+}
+if (!fs.existsSync(path.join(importsPath, 'plans'))) {
+  fs.mkdirSync(path.join(importsPath, 'plans'), { recursive: true });
+}
+
 let mainWindow;
 
 function createWindow() {
@@ -13,7 +24,7 @@ function createWindow() {
     height: 1000,
     minWidth: 1200,
     minHeight: 800,
-    backgroundColor: '#0f0f14',
+    backgroundColor: '#0a0a0f',
     webPreferences: {
       nodeIntegration: false,
       contextIsolation: true,
@@ -37,7 +48,55 @@ app.on('window-all-closed', () => {
   if (process.platform !== 'darwin') app.quit();
 });
 
-// Save/Load project
+// Import file
+ipcMain.handle('import-file', async () => {
+  const result = await dialog.showOpenDialog(mainWindow, {
+    properties: ['openFile', 'multiSelections'],
+    filters: [
+      { name: 'Images', extensions: ['jpg', 'jpeg', 'png', 'webp', 'bmp'] },
+      { name: 'PDF', extensions: ['pdf'] }
+    ]
+  });
+  
+  if (!result.canceled && result.filePaths.length > 0) {
+    const imported = [];
+    
+    for (const filePath of result.filePaths) {
+      const fileName = path.basename(filePath);
+      const destPath = path.join(importsPath, 'plans', fileName);
+      
+      // Copy file to imports folder
+      fs.copyFileSync(filePath, destPath);
+      
+      imported.push({
+        name: fileName,
+        path: destPath,
+        type: path.extname(fileName).replace('.', '')
+      });
+    }
+    
+    return imported;
+  }
+  return null;
+});
+
+// Get imports list
+ipcMain.handle('get-imports', async () => {
+  const plansPath = path.join(importsPath, 'plans');
+  
+  if (!fs.existsSync(plansPath)) {
+    return [];
+  }
+  
+  const files = fs.readdirSync(plansPath);
+  return files.map(file => ({
+    name: file,
+    path: path.join(plansPath, file),
+    type: path.extname(file).replace('.', '')
+  }));
+});
+
+// Save project
 ipcMain.handle('save-project', async (event, projectData) => {
   const result = await dialog.showSaveDialog(mainWindow, {
     filters: [{ name: 'FloorPlan Project', extensions: ['fplan'] }]
@@ -49,6 +108,7 @@ ipcMain.handle('save-project', async (event, projectData) => {
   return null;
 });
 
+// Load project
 ipcMain.handle('load-project', async () => {
   const result = await dialog.showOpenDialog(mainWindow, {
     filters: [{ name: 'FloorPlan Project', extensions: ['fplan'] }]
@@ -60,6 +120,7 @@ ipcMain.handle('load-project', async () => {
   return null;
 });
 
+// Export 3D
 ipcMain.handle('export-3d', async (event, modelData, format) => {
   const result = await dialog.showSaveDialog(mainWindow, {
     defaultPath: `house-model.${format}`,
@@ -75,6 +136,7 @@ ipcMain.handle('export-3d', async (event, modelData, format) => {
   return null;
 });
 
+// Export image
 ipcMain.handle('export-image', async (event, dataUrl) => {
   const result = await dialog.showSaveDialog(mainWindow, {
     defaultPath: 'floorplan.png',
