@@ -448,6 +448,7 @@
       </div>
       
       <div class="header-actions">
+        <button class="header-btn" id="aiConvertBtn">🤖 AI Convert</button>
         <button class="header-btn" id="newBtn">New</button>
         <button class="header-btn" id="saveBtn">Save</button>
         <button class="header-btn" id="loadBtn">Load</button>
@@ -1137,6 +1138,64 @@
       const obj = generateOBJ();
       const path = await window.electronAPI.export3D(obj, 'obj');
       if (path) setStatus('3D exported');
+    });
+    
+    // AI Convert
+    let selectedImportFile = null;
+    
+    document.getElementById('aiConvertBtn')?.addEventListener('click', async () => {
+      // Check if a file is selected in imports
+      const files = await window.electronAPI.getImports();
+      
+      if (files.length === 0) {
+        alert('Please import a floor plan image first!');
+        return;
+      }
+      
+      // Show file selection or use first file
+      const file = files[0]; // Use first file for now
+      
+      setStatus('🤖 AI converting sketch to 3D...');
+      
+      try {
+        const result = await window.electronAPI.aiConvertSketch(file.path);
+        
+        if (result.success && result.elements && result.elements.length > 0) {
+          // Add detected elements to canvas
+          result.elements.forEach(el => {
+            const element = {
+              id: Date.now() + Math.random(),
+              type: el.type || 'wall',
+              x: el.x || 1,
+              y: el.y || 1,
+              width: el.width || 2,
+              height: el.height || 2,
+              height3d: el.height3d || 3,
+              color: el.color || '#d4d4d4',
+              icon: componentDefaults[el.type]?.icon || '🧱'
+            };
+            state.elements.push(element);
+          });
+          
+          updateElementsList();
+          draw();
+          setStatus(`🤖 AI: ${result.message}`);
+          document.getElementById('emptyState').style.display = 'none';
+        } else {
+          setStatus('🤖 AI: No elements detected - use manual builder');
+        }
+      } catch (error) {
+        console.error('AI Convert error:', error);
+        setStatus('🤖 AI: Processing failed - use manual builder');
+      }
+    });
+    
+    // File selection in imports
+    document.getElementById('fileList')?.addEventListener('click', (e) => {
+      const fileItem = e.target.closest('.file-item');
+      if (fileItem) {
+        selectedImportFile = fileItem.querySelector('.file-name')?.textContent;
+      }
     });
     
     // ==================== THREE.JS ====================

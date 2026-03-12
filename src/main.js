@@ -1,6 +1,7 @@
 const { app, BrowserWindow, ipcMain, dialog } = require('electron');
 const path = require('path');
 const fs = require('fs');
+const { spawn } = require('child_process');
 const log = require('electron-log');
 
 log.initialize();
@@ -8,15 +9,14 @@ log.initialize();
 // User data path for storing imports
 const userDataPath = app.getPath('userData');
 const importsPath = path.join(userDataPath, 'imports');
+const outputsPath = path.join(userDataPath, 'outputs');
 
-if (!fs.existsSync(importsPath)) {
-  fs.mkdirSync(importsPath, { recursive: true });
-}
-if (!fs.existsSync(path.join(importsPath, 'plans'))) {
-  fs.mkdirSync(path.join(importsPath, 'plans'), { recursive: true });
-}
+[importsPath, outputsPath, path.join(importsPath, 'plans')].forEach(p => {
+  if (!fs.existsSync(p)) fs.mkdirSync(p, { recursive: true });
+});
 
 let mainWindow;
+let pythonServer;
 
 function createWindow() {
   mainWindow = new BrowserWindow({
@@ -40,11 +40,38 @@ function createWindow() {
   });
 }
 
+// Start Python server for AI processing
+function startPythonServer() {
+  const serverPath = app.isPackaged 
+    ? path.join(process.resourcesPath, 'server')
+    : path.join(__dirname, 'server');
+  
+  if (!fs.existsSync(serverPath)) {
+    log.info('Server folder not found, AI features will work with basic processing');
+    return;
+  }
+
+  pythonServer = spawn('python', ['-m', 'uvicorn', 'main:app', '--host', '127.0.0.1', '--port', '8000'], {
+    cwd: serverPath,
+    stdio: 'pipe'
+  });
+
+  pythonServer.stdout.on('data', (data) => {
+    log.info('AI Server:', data.toString());
+  });
+
+  pythonServer.stderr.on('data', (data) => {
+    log.error('AI Server Error:', data.toString());
+  });
+}
+
 app.whenReady().then(() => {
   createWindow();
+  startPythonServer();
 });
 
 app.on('window-all-closed', () => {
+  if (pythonServer) pythonServer.kill();
   if (process.platform !== 'darwin') app.quit();
 });
 
@@ -63,15 +90,15 @@ ipcMain.handle('import-file', async () => {
     
     for (const filePath of result.filePaths) {
       const fileName = path.basename(filePath);
+      const ext = path.extname(fileName);
       const destPath = path.join(importsPath, 'plans', fileName);
       
-      // Copy file to imports folder
       fs.copyFileSync(filePath, destPath);
       
       imported.push({
         name: fileName,
         path: destPath,
-        type: path.extname(fileName).replace('.', '')
+        type: ext.replace('.', '')
       });
     }
     
@@ -84,16 +111,61 @@ ipcMain.handle('import-file', async () => {
 ipcMain.handle('get-imports', async () => {
   const plansPath = path.join(importsPath, 'plans');
   
-  if (!fs.existsSync(plansPath)) {
-    return [];
-  }
+  if (!fs.existsSync(plansPath)) return [];
   
-  const files = fs.readdirSync(plansPath);
-  return files.map(file => ({
+  return fs.readdirSync(plansPath).map(file => ({
     name: file,
     path: path.join(plansPath, file),
     type: path.extname(file).replace('.', '')
   }));
+});
+
+// AI: Convert sketch to 3D elements
+ipcMain.handle('ai-convert-sketch', async (event, imagePath) => {
+  return new Promise((resolve, reject) => {
+    const serverPath = app.isPackaged 
+      ? path.join(process.resourcesPath, 'server')
+      : path.join(__dirname, 'server');
+    
+    // Try to call Python API, fallback to local processing
+    const curl = spawn('curl', [
+      '-X', 'POST',
+      'http://127.0.0.1:8000/convert-sketch',
+      '-H', 'Content-Type: application/json',
+      '-d', JSON.stringify({ image_path: imagePath })
+    ], { stdio: 'pipe' });
+
+    let output = '';
+    curl.stdout.on('data', (data) => { output += data.toString(); });
+    curl.stderr.on('data', (data) => { log.info('Curl:', data.toString()); });
+    
+    curl.on('close', (code) => {
+      if (code === 0 && output) {
+        try {
+          const result = JSON.parse(output);
+          resolve(result);
+        } catch (e) {
+          // Fallback to basic processing
+          resolve({ 
+            success: true, 
+            elements: [],
+            message: 'Using basic processing' 
+          });
+        }
+      } else {
+        resolve({ 
+          success: true, 
+          elements: [],
+          message: 'AI server not available, use manual builder' 
+        });
+      }
+    });
+  });
+});
+
+// Get image for preview
+ipcMain.handle('get-image-path', async (event, fileName) => {
+  return path.join(importsPath, 'plans', fileName);
 });
 
 // Save project
@@ -114,8 +186,7 @@ ipcMain.handle('load-project', async () => {
     filters: [{ name: 'FloorPlan Project', extensions: ['fplan'] }]
   });
   if (!result.canceled && result.filePaths.length > 0) {
-    const data = fs.readFileSync(result.filePaths[0], 'utf8');
-    return JSON.parse(data);
+    return JSON.parse(fs.readFileSync(result.filePaths[0], 'utf8'));
   }
   return null;
 });

@@ -2,7 +2,7 @@
 
 **Blender-like design tool for civil engineers and architects**
 
-## Features
+## Phase 1: Manual Builder ✅
 
 ### 📁 File Manager
 - Import floor plan images (JPG, PNG, PDF)
@@ -28,45 +28,78 @@
 | Bay Window | Bay window |
 
 ### 🛋️ Furniture
-| Component | Description |
-|-----------|-------------|
-| Bed Single | Single bed |
-| Bed Double | Double bed |
-| Sofa | Standard sofa |
-| Sofa L | L-shaped sofa |
-| Table Dining | Dining table |
-| Coffee Table | Coffee table |
-| Chair | Chair |
-| Wardrobe | Wardrobe |
+Bed Single, Bed Double, Sofa, Sofa L, Dining Table, Coffee Table, Chair, Wardrobe
 
 ### 🚿 Sanitary
-| Component | Description |
-|-----------|-------------|
-| Toilet | Toilet |
-| Basin | Sink/basin |
-| Bathtub | Bathtub |
-| Shower | Shower unit |
+Toilet, Basin, Bathtub, Shower
 
 ### 🍳 Kitchen
-| Component | Description |
-|-----------|-------------|
-| Counter | Kitchen counter |
-| Cabinet | Storage cabinet |
-| Stove | Cooking stove |
-| Fridge | Refrigerator |
+Counter, Cabinet, Stove, Fridge
+
+---
+
+## Phase 2: AI Conversion 🤖
+
+### AI-Powered Sketch to 3D
+
+The app now includes AI that can:
+1. **Detect walls** from uploaded floor plan images
+2. **Identify doors and windows**
+3. **Count rooms**
+4. **Auto-generate** editable 3D elements
+
+### How to Use AI
+
+1. Import a floor plan image (PNG/JPG)
+2. Click **🤖 AI Convert** button in header
+3. AI analyzes the sketch and creates elements
+4. Edit/ customize the detected elements
+
+### AI Features
+
+- **OpenCV-based detection** — Uses computer vision to detect lines
+- **Wall detection** — Identifies wall segments
+- **Opening detection** — Finds doors and windows
+- **Room counting** — Estimates number of rooms
+- **Editable results** — All AI-detected elements can be modified
+
+---
+
+## Installation
+
+### Frontend
+```bash
+npm install
+npm start
+```
+
+### AI Server (Optional - for better detection)
+```bash
+cd server
+pip install -r requirements.txt
+python -m uvicorn main:app --port 8000
+```
+
+### Build for Windows
+```bash
+npm run build
+```
+
+---
 
 ## Usage
 
-### Adding Elements
+### Adding Elements Manually
 1. Click any component in the sidebar
 2. Element appears on canvas
 3. Click to select, drag to move
+4. Use properties panel to adjust
 
-### Editing
-- Select element → properties panel shows
-- Adjust position, size (in meters)
-- Change height for 3D
-- Pick custom colors
+### Using AI
+1. Import a floor plan image
+2. Click "🤖 AI Convert"
+3. AI detects and creates elements
+4. Edit as needed
 
 ### 2D/3D Views
 - Click "2D" or "3D" to toggle
@@ -77,18 +110,26 @@
 - Export as PNG image
 - Export as OBJ 3D model
 
-## Install
+---
 
-```bash
-npm install
-npm start
-```
+## Tech Stack
 
-## Build for Windows
+| Layer | Technology |
+|-------|------------|
+| Desktop | Electron |
+| 3D Engine | Three.js |
+| AI/ML | OpenCV, Python |
+| Backend | FastAPI |
 
-```bash
-npm run build
-```
+---
+
+## Future (Phase 3)
+
+- [ ] Advanced AI models (ControlNet, TripoSR)
+- [ ] Automatic room detection
+- [ ] Smart door/window placement
+- [ ] Material/texture library
+- [ ] Undo/Redo system
 
 ---
 

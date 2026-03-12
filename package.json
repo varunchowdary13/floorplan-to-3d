@@ -5,6 +5,8 @@
   "main": "src/main.js",
   "scripts": {
     "start": "electron .",
+    "server": "python server/main.py",
+    "dev": "electron . && python server/main.py",
     "build": "electron-builder --win"
   },
   "author": "Varun",
@@ -21,6 +23,12 @@
     "productName": "FloorPlan 3D Pro",
     "directories": { "output": "dist" },
     "win": { "target": "nsis" },
-    "files": ["src/**/*"]
+    "files": ["src/**/*", "server/**/*"],
+    "extraResources": [
+      {
+        "from": "server",
+        "to": "server"
+      }
+    ]
   }
 }
