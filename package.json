@@ -1,11 +1,10 @@
 {
-  "name": "floorplan-to-3d",
+  "name": "floorplan-3d-builder",
   "version": "1.0.0",
-  "description": "Convert architectural floor plans to 3D house models",
+  "description": "Floor plan builder + 3D converter for architectural design",
   "main": "src/main.js",
   "scripts": {
     "start": "electron .",
-    "dev": "electron . --enable-logging",
     "build": "electron-builder --win"
   },
   "author": "Varun",
@@ -19,7 +18,7 @@
   },
   "build": {
     "appId": "com.varun.floorplan3d",
-    "productName": "FloorPlan to 3D",
+    "productName": "FloorPlan 3D Builder",
     "directories": { "output": "dist" },
     "win": { "target": "nsis" },
     "files": ["src/**/*"]

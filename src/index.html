@@ -3,686 +3,1183 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>FloorPlan to 3D | Architectural Converter</title>
+  <title>FloorPlan 3D Builder | Architectural Design</title>
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
     
+    :root {
+      --bg-dark: #0a0a0f;
+      --bg-panel: #13131a;
+      --bg-hover: #1a1a24;
+      --accent: #f59e0b;
+      --accent-dim: rgba(245, 158, 11, 0.2);
+      --border: rgba(255,255,255,0.08);
+      --text: #e2e8f0;
+      --text-dim: #64748b;
+    }
+    
     body {
       font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
-      background: #0f0f14;
-      color: #fff;
+      background: var(--bg-dark);
+      color: var(--text);
       overflow: hidden;
+      height: 100vh;
     }
     
     .app {
       display: grid;
-      grid-template-columns: 380px 1fr;
+      grid-template-columns: 280px 1fr 280px;
+      grid-template-rows: 56px 1fr;
       height: 100vh;
     }
     
-    /* Sidebar */
-    .sidebar {
-      background: linear-gradient(180deg, #1a1a24 0%, #0f0f14 100%);
-      border-right: 1px solid rgba(255,255,255,0.06);
-      padding: 24px;
+    /* Header */
+    .header {
+      grid-column: 1 / -1;
+      background: var(--bg-panel);
+      border-bottom: 1px solid var(--border);
       display: flex;
-      flex-direction: column;
-      gap: 20px;
-      overflow-y: auto;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 20px;
     }
     
     .logo {
       display: flex;
       align-items: center;
-      gap: 14px;
-      padding-bottom: 20px;
-      border-bottom: 1px solid rgba(255,255,255,0.06);
+      gap: 12px;
     }
     
     .logo-icon {
-      width: 52px;
-      height: 52px;
-      background: linear-gradient(135deg, #f59e0b, #ef4444);
-      border-radius: 14px;
+      width: 36px;
+      height: 36px;
+      background: linear-gradient(135deg, var(--accent), #ef4444);
+      border-radius: 8px;
       display: flex;
       align-items: center;
       justify-content: center;
-      font-size: 26px;
+      font-size: 18px;
     }
     
-    .logo h1 {
-      font-size: 22px;
-      font-weight: 700;
-      letter-spacing: -0.5px;
+    .logo h1 { font-size: 16px; font-weight: 600; }
+    
+    .header-actions {
+      display: flex;
+      gap: 8px;
     }
     
-    .logo p {
-      font-size: 12px;
-      color: rgba(255,255,255,0.4);
+    .header-btn {
+      padding: 8px 16px;
+      border-radius: 6px;
+      border: 1px solid var(--border);
+      background: transparent;
+      color: var(--text);
+      font-size: 13px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      transition: all 0.2s;
     }
     
-    /* Section */
-    .section {
-      background: rgba(255,255,255,0.03);
-      border: 1px solid rgba(255,255,255,0.06);
-      border-radius: 14px;
-      padding: 18px;
+    .header-btn:hover { background: var(--bg-hover); }
+    .header-btn.primary { background: var(--accent); border-color: var(--accent); color: #000; font-weight: 600; }
+    .header-btn.primary:hover { background: #d97706; }
+    
+    /* Left Panel - Components */
+    .left-panel {
+      background: var(--bg-panel);
+      border-right: 1px solid var(--border);
+      padding: 16px;
+      overflow-y: auto;
     }
     
-    .section-title {
+    .panel-title {
       font-size: 11px;
       font-weight: 600;
       text-transform: uppercase;
       letter-spacing: 1px;
-      color: rgba(255,255,255,0.4);
-      margin-bottom: 14px;
+      color: var(--text-dim);
+      margin-bottom: 16px;
     }
     
-    /* Drop Zone */
-    .drop-zone {
-      border: 2px dashed rgba(255,255,255,0.1);
-      border-radius: 12px;
-      padding: 28px;
-      text-align: center;
-      cursor: pointer;
-      transition: all 0.25s ease;
-      background: rgba(255,255,255,0.02);
-    }
-    
-    .drop-zone:hover, .drop-zone.active {
-      border-color: #f59e0b;
-      background: rgba(245, 158, 11, 0.08);
-    }
-    
-    .drop-zone-icon { font-size: 42px; margin-bottom: 10px; }
-    .drop-zone p { color: rgba(255,255,255,0.6); font-size: 14px; }
-    .drop-zone span { color: #f59e0b; }
-    
-    /* Preview */
-    .preview-img {
-      width: 100%;
-      height: 160px;
-      object-fit: contain;
-      border-radius: 10px;
-      background: #000;
-      display: none;
-    }
-    
-    .preview-img.visible { display: block; }
-    
-    /* Controls */
-    .control-group { margin-bottom: 16px; }
-    
-    .control-label {
-      display: flex;
-      justify-content: space-between;
-      font-size: 13px;
-      color: rgba(255,255,255,0.7);
-      margin-bottom: 8px;
-    }
-    
-    .control-label span:last-child { color: #f59e0b; font-weight: 600; }
-    
-    input[type="range"] {
-      width: 100%;
-      height: 6px;
-      border-radius: 3px;
-      background: rgba(255,255,255,0.1);
-      appearance: none;
-      cursor: pointer;
-    }
-    
-    input[type="range"]::-webkit-slider-thumb {
-      appearance: none;
-      width: 18px;
-      height: 18px;
-      border-radius: 50%;
-      background: #f59e0b;
-      cursor: pointer;
-      box-shadow: 0 2px 8px rgba(245, 158, 11, 0.4);
-    }
-    
-    input[type="color"] {
-      width: 100%;
-      height: 36px;
-      border: none;
-      border-radius: 8px;
-      cursor: pointer;
-      background: transparent;
-    }
-    
-    /* Buttons */
-    .btn {
-      width: 100%;
-      padding: 14px;
-      border: none;
-      border-radius: 10px;
-      font-size: 14px;
-      font-weight: 600;
-      cursor: pointer;
-      transition: all 0.25s ease;
-      display: flex;
-      align-items: center;
-      justify-content: center;
+    .component-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
       gap: 8px;
     }
     
-    .btn-primary {
-      background: linear-gradient(135deg, #f59e0b, #ef4444);
-      color: white;
+    .component-item {
+      background: var(--bg-hover);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 12px 8px;
+      text-align: center;
+      cursor: grab;
+      transition: all 0.2s;
     }
     
-    .btn-primary:hover:not(:disabled) {
-      transform: translateY(-2px);
-      box-shadow: 0 8px 24px rgba(245, 158, 11, 0.35);
+    .component-item:hover {
+      border-color: var(--accent);
+      background: var(--accent-dim);
     }
     
-    .btn-primary:disabled {
-      opacity: 0.5;
-      cursor: not-allowed;
-    }
+    .component-item:active { cursor: grabbing; }
     
-    .btn-secondary {
-      background: rgba(255,255,255,0.08);
-      border: 1px solid rgba(255,255,255,0.1);
-      color: white;
-    }
+    .component-icon { font-size: 24px; margin-bottom: 6px; }
+    .component-name { font-size: 11px; color: var(--text-dim); }
     
-    .btn-secondary:hover { background: rgba(255,255,255,0.12); }
-    
-    /* Status */
-    .status {
-      padding: 14px;
-      border-radius: 10px;
-      font-size: 13px;
-      display: none;
-    }
-    
-    .status.visible { display: block; }
-    .status.processing { background: rgba(245, 158, 11, 0.1); border: 1px solid rgba(245, 158, 11, 0.3); color: #fbbf24; }
-    .status.success { background: rgba(16, 185, 129, 0.1); border: 1px solid rgba(16, 185, 129, 0.3); color: #34d399; }
-    .status.error { background: rgba(239, 68, 68, 0.1); border: 1px solid rgba(239, 68, 68, 0.3); color: #f87171; }
-    
-    /* Main View */
-    .main-view {
+    /* Main Canvas Area */
+    .canvas-area {
       position: relative;
       background: #08080c;
       display: flex;
       flex-direction: column;
     }
     
-    .main-header {
-      padding: 16px 24px;
-      background: rgba(255,255,255,0.03);
-      border-bottom: 1px solid rgba(255,255,255,0.05);
+    .canvas-toolbar {
+      padding: 10px 16px;
+      background: var(--bg-panel);
+      border-bottom: 1px solid var(--border);
       display: flex;
-      justify-content: space-between;
       align-items: center;
+      gap: 12px;
     }
     
-    .view-tabs {
-      display: flex;
-      gap: 8px;
-    }
-    
-    .view-tab {
-      padding: 8px 16px;
-      border-radius: 8px;
-      font-size: 13px;
-      font-weight: 500;
-      cursor: pointer;
+    .tool-btn {
+      width: 36px;
+      height: 36px;
+      border-radius: 6px;
+      border: 1px solid var(--border);
       background: transparent;
-      color: rgba(255,255,255,0.5);
-      border: none;
+      color: var(--text);
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 16px;
       transition: all 0.2s;
     }
     
-    .view-tab.active {
-      background: rgba(245, 158, 11, 0.15);
-      color: #f59e0b;
+    .tool-btn:hover { background: var(--bg-hover); }
+    .tool-btn.active { background: var(--accent); border-color: var(--accent); color: #000; }
+    
+    .toolbar-divider {
+      width: 1px;
+      height: 24px;
+      background: var(--border);
     }
     
+    .grid-toggle {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 12px;
+      color: var(--text-dim);
+      margin-left: auto;
+    }
+    
+    .grid-toggle input { cursor: pointer; }
+    
+    /* Canvas */
     .canvas-container {
       flex: 1;
       position: relative;
       overflow: hidden;
     }
     
-    #floorplanCanvas, #modelCanvas {
+    #builderCanvas {
       position: absolute;
       top: 0;
       left: 0;
+    }
+    
+    #threeCanvas {
+      position: absolute;
+      top: 0;
+      left: 0;
+      display: none;
+    }
+    
+    #threeCanvas.visible { display: block; }
+    
+    /* Measurement overlay */
+    .measurement-label {
+      position: absolute;
+      background: rgba(0,0,0,0.8);
+      color: var(--accent);
+      padding: 2px 6px;
+      border-radius: 4px;
+      font-size: 10px;
+      pointer-events: none;
+    }
+    
+    /* Right Panel - Properties */
+    .right-panel {
+      background: var(--bg-panel);
+      border-left: 1px solid var(--border);
+      padding: 16px;
+      overflow-y: auto;
+    }
+    
+    .property-group {
+      margin-bottom: 20px;
+    }
+    
+    .property-label {
+      font-size: 11px;
+      color: var(--text-dim);
+      margin-bottom: 8px;
+      display: block;
+    }
+    
+    .property-input {
       width: 100%;
-      height: 100%;
+      padding: 10px 12px;
+      background: var(--bg-hover);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      color: var(--text);
+      font-size: 13px;
+      margin-bottom: 8px;
     }
     
-    #modelCanvas { display: none; }
-    #modelCanvas.visible { display: block; }
-    #floorplanCanvas.hidden { display: none; }
-    
-    .empty-state {
-      position: absolute;
-      top: 50%;
-      left: 50%;
-      transform: translate(-50%, -50%);
-      text-align: center;
-      color: rgba(255,255,255,0.25);
+    .property-input:focus {
+      outline: none;
+      border-color: var(--accent);
     }
     
-    .empty-state-icon { font-size: 72px; margin-bottom: 16px; opacity: 0.4; }
-    .empty-state p { font-size: 15px; }
-    
-    /* View Controls */
-    .view-controls {
-      position: absolute;
-      bottom: 20px;
-      right: 20px;
-      display: flex;
+    .property-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
       gap: 8px;
     }
     
-    .view-btn {
-      width: 42px;
-      height: 42px;
-      background: rgba(255,255,255,0.08);
-      border: 1px solid rgba(255,255,255,0.1);
-      border-radius: 10px;
-      color: white;
+    .property-row .property-input {
+      margin-bottom: 0;
+    }
+    
+    /* Element list */
+    .element-list {
+      max-height: 200px;
+      overflow-y: auto;
+    }
+    
+    .element-item {
+      padding: 10px;
+      background: var(--bg-hover);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      margin-bottom: 6px;
       cursor: pointer;
       display: flex;
       align-items: center;
-      justify-content: center;
-      font-size: 18px;
-      transition: all 0.2s;
+      justify-content: space-between;
     }
     
-    .view-btn:hover { background: rgba(255,255,255,0.15); }
-    .view-btn.active { background: #f59e0b; border-color: #f59e0b; }
+    .element-item:hover { border-color: var(--accent); }
+    .element-item.selected { border-color: var(--accent); background: var(--accent-dim); }
     
-    /* Instructions */
-    .instructions {
-      position: absolute;
-      bottom: 20px;
-      left: 20px;
-      background: rgba(0,0,0,0.6);
-      backdrop-filter: blur(10px);
-      padding: 12px 16px;
-      border-radius: 10px;
+    .element-info { display: flex; align-items: center; gap: 8px; }
+    .element-icon { font-size: 16px; }
+    .element-name { font-size: 12px; }
+    .element-delete {
+      background: none;
+      border: none;
+      color: #ef4444;
+      cursor: pointer;
+      padding: 4px;
+      font-size: 14px;
+    }
+    
+    /* Quick sizes */
+    .quick-sizes {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      margin-top: 8px;
+    }
+    
+    .size-chip {
+      padding: 4px 10px;
+      background: var(--bg-hover);
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      font-size: 11px;
+      cursor: pointer;
+    }
+    
+    .size-chip:hover { border-color: var(--accent); }
+    
+    /* View modes */
+    .view-modes {
+      display: flex;
+      gap: 4px;
+      background: var(--bg-hover);
+      padding: 4px;
+      border-radius: 6px;
+    }
+    
+    .view-mode {
+      padding: 6px 12px;
+      border-radius: 4px;
       font-size: 12px;
-      color: rgba(255,255,255,0.6);
-      max-width: 280px;
+      cursor: pointer;
+      border: none;
+      background: transparent;
+      color: var(--text-dim);
     }
     
-    .instructions strong { color: #f59e0b; }
+    .view-mode.active { background: var(--accent); color: #000; }
     
-    /* Loading */
-    .spinner {
-      width: 16px;
-      height: 16px;
-      border: 2px solid transparent;
-      border-top-color: currentColor;
-      border-radius: 50%;
-      animation: spin 0.8s linear infinite;
-      display: inline-block;
+    /* Status */
+    .status-bar {
+      position: absolute;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      padding: 8px 16px;
+      background: var(--bg-panel);
+      border-top: 1px solid var(--border);
+      font-size: 11px;
+      color: var(--text-dim);
+      display: flex;
+      justify-content: space-between;
     }
     
-    @keyframes spin { to { transform: rotate(360deg); } }
+    /* Scrollbar */
+    ::-webkit-scrollbar { width: 6px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+    ::-webkit-scrollbar-thumb:hover { background: var(--text-dim); }
   </style>
 </head>
 <body>
   <div class="app">
-    <!-- Sidebar -->
-    <aside class="sidebar">
+    <!-- Header -->
+    <header class="header">
       <div class="logo">
         <div class="logo-icon">🏠</div>
-        <div>
-          <h1>FloorPlan 3D</h1>
-          <p>Architectural converter</p>
+        <h1>FloorPlan 3D Builder</h1>
+      </div>
+      
+      <div class="header-actions">
+        <button class="header-btn" id="newBtn">📄 New</button>
+        <button class="header-btn" id="saveBtn">💾 Save</button>
+        <button class="header-btn" id="loadBtn">📂 Load</button>
+        <button class="header-btn" id="exportImgBtn">🖼️ Export Image</button>
+        <button class="header-btn primary" id="export3dBtn">🏗️ Export 3D</button>
+      </div>
+    </header>
+    
+    <!-- Left Panel - Components -->
+    <aside class="left-panel">
+      <div class="panel-title">🧱 Structure</div>
+      <div class="component-grid">
+        <div class="component-item" draggable="true" data-type="wall">
+          <div class="component-icon">🧱</div>
+          <div class="component-name">Wall</div>
+        </div>
+        <div class="component-item" draggable="true" data-type="floor">
+          <div class="component-icon">⬜</div>
+          <div class="component-name">Floor</div>
+        </div>
+        <div class="component-item" draggable="true" data-type="door">
+          <div class="component-icon">🚪</div>
+          <div class="component-name">Door</div>
+        </div>
+        <div class="component-item" draggable="true" data-type="window">
+          <div class="component-icon">🪟</div>
+          <div class="component-name">Window</div>
+        </div>
+        <div class="component-item" draggable="true" data-type="roof">
+          <div class="component-icon">�三角</div>
+          <div class="component-name">Roof</div>
+        </div>
+        <div class="component-item" draggable="true" data-type="pillar">
+          <div class="component-icon">柱</div>
+          <div class="component-name">Pillar</div>
         </div>
       </div>
       
-      <!-- Upload -->
-      <div class="section">
-        <div class="section-title">1. Upload Floor Plan</div>
-        <div class="drop-zone" id="dropZone">
-          <div class="drop-zone-icon">📐</div>
-          <p>Drop your floor plan or <span>browse</span></p>
+      <div class="panel-title" style="margin-top: 24px;">📐 Quick Add</div>
+      <div class="component-grid">
+        <div class="component-item" data-type="room-3x3">
+          <div class="component-name">3×3 Room</div>
         </div>
-        <img id="previewImg" class="preview-img" alt="Floor plan">
-      </div>
-      
-      <!-- Settings -->
-      <div class="section">
-        <div class="section-title">2. Adjust Settings</div>
-        
-        <div class="control-group">
-          <div class="control-label">
-            <span>Wall Height</span>
-            <span id="wallHeightVal">3.0m</span>
-          </div>
-          <input type="range" id="wallHeight" min="2" max="6" step="0.1" value="3">
+        <div class="component-item" data-type="room-4x4">
+          <div class="component-name">4×4 Room</div>
         </div>
-        
-        <div class="control-group">
-          <div class="control-label">
-            <span>Wall Thickness</span>
-            <span id="wallThicknessVal">0.3m</span>
-          </div>
-          <input type="range" id="wallThickness" min="0.1" max="0.5" step="0.05" value="0.3">
+        <div class="component-item" data-type="room-5x4">
+          <div class="component-name">5×4 Room</div>
         </div>
-        
-        <div class="control-group">
-          <div class="control-label"><span>Wall Color</span></div>
-          <input type="color" id="wallColor" value="#e5e5e5">
-        </div>
-        
-        <div class="control-group">
-          <div class="control-label"><span>Background</span></div>
-          <input type="color" id="bgColor" value="#1e293b">
+        <div class="component-item" data-type="corridor">
+          <div class="component-name">Corridor</div>
         </div>
       </div>
-      
-      <!-- Actions -->
-      <button class="btn btn-primary" id="generateBtn" disabled>
-        <span>🏗️</span>
-        <span>Generate 3D Model</span>
-      </button>
-      
-      <button class="btn btn-secondary" id="exportBtn" style="display:none;">
-        <span>💾</span>
-        <span>Export Model</span>
-      </button>
-      
-      <div class="status" id="status"></div>
     </aside>
     
-    <!-- Main View -->
-    <main class="main-view">
-      <div class="main-header">
-        <div class="view-tabs">
-          <button class="view-tab active" data-view="floorplan">2D Plan</button>
-          <button class="view-tab" data-view="3d">3D View</button>
+    <!-- Canvas Area -->
+    <div class="canvas-area">
+      <div class="canvas-toolbar">
+        <button class="tool-btn active" id="selectTool" title="Select">⬚</button>
+        <button class="tool-btn" id="moveTool" title="Move">✥</button>
+        <button class="tool-btn" id="drawTool" title="Draw">✏️</button>
+        <button class="tool-btn" id="measureTool" title="Measure">📏</button>
+        
+        <div class="toolbar-divider"></div>
+        
+        <button class="tool-btn" id="deleteTool" title="Delete">🗑️</button>
+        <button class="tool-btn" id="duplicateTool" title="Duplicate">📋</button>
+        
+        <div class="toolbar-divider"></div>
+        
+        <div class="view-modes">
+          <button class="view-mode active" data-view="2d">2D Plan</button>
+          <button class="view-mode" data-view="3d">3D View</button>
+        </div>
+        
+        <div class="grid-toggle">
+          <input type="checkbox" id="gridToggle" checked>
+          <label for="gridToggle">Show Grid (1m)</label>
         </div>
       </div>
       
-      <div class="canvas-container">
-        <canvas id="floorplanCanvas"></canvas>
-        <canvas id="modelCanvas"></canvas>
-        
-        <div class="empty-state" id="emptyState">
-          <div class="empty-state-icon">📐</div>
-          <p>Upload a floor plan to get started</p>
-        </div>
-        
-        <div class="instructions" id="instructions" style="display:none;">
-          <strong>Tip:</strong> Click and drag to rotate • Scroll to zoom
-        </div>
-        
-        <div class="view-controls" style="display:none;" id="viewControls">
-          <button class="view-btn active" id="rotateMode" title="Rotate">🔄</button>
-          <button class="view-btn" id="zoomMode" title="Zoom">🔍</button>
-          <button class="view-btn" id="resetView" title="Reset">↺</button>
-        </div>
+      <div class="canvas-container" id="canvasContainer">
+        <canvas id="builderCanvas"></canvas>
+        <canvas id="threeCanvas"></canvas>
       </div>
-    </main>
+      
+      <div class="status-bar">
+        <span id="statusText">Ready</span>
+        <span id="coords">X: 0m | Y: 0m</span>
+      </div>
+    </div>
+    
+    <!-- Right Panel - Properties -->
+    <aside class="right-panel">
+      <div class="panel-title">⚙️ Properties</div>
+      
+      <div class="property-group" id="noSelection">
+        <p style="color: var(--text-dim); font-size: 12px;">Select an element to edit its properties</p>
+      </div>
+      
+      <div class="property-group" id="elementProps" style="display: none;">
+        <label class="property-label">Element Type</label>
+        <input type="text" class="property-input" id="propType" readonly>
+        
+        <label class="property-label">Position</label>
+        <div class="property-row">
+          <input type="number" class="property-input" id="propX" placeholder="X (m)">
+          <input type="number" class="property-input" id="propY" placeholder="Y (m)">
+        </div>
+        
+        <label class="property-label">Size</label>
+        <div class="property-row">
+          <input type="number" class="property-input" id="propW" placeholder="Width">
+          <input type="number" class="property-input" id="propH" placeholder="Height">
+        </div>
+        
+        <label class="property-label">Quick Sizes</label>
+        <div class="quick-sizes" id="quickSizes">
+          <div class="size-chip" data-size="1">1m</div>
+          <div class="size-chip" data-size="2">2m</div>
+          <div class="size-chip" data-size="3">3m</div>
+          <div class="size-chip" data-size="4">4m</div>
+          <div class="size-chip" data-size="5">5m</div>
+          <div class="size-chip" data-size="6">6m</div>
+        </div>
+        
+        <label class="property-label" style="margin-top: 16px;">Height (for 3D)</label>
+        <input type="number" class="property-input" id="propHeight" placeholder="Height (m)">
+        
+        <label class="property-label">Color</label>
+        <input type="color" class="property-input" id="propColor" value="#e5e5e5" style="height: 40px;">
+        
+        <button class="header-btn" id="deleteElement" style="width: 100%; margin-top: 16px; justify-content: center; color: #ef4444;">
+          🗑️ Delete Element
+        </button>
+      </div>
+      
+      <div class="panel-title" style="margin-top: 24px;">📋 Elements (<span id="elementCount">0</span>)</div>
+      <div class="element-list" id="elementList"></div>
+      
+      <div class="panel-title" style="margin-top: 24px;">📏 Project Settings</div>
+      <div class="property-group">
+        <label class="property-label">Grid Size (meters)</label>
+        <input type="number" class="property-input" id="gridSize" value="1" min="0.1" max="5" step="0.1">
+        
+        <label class="property-label">Default Wall Height (m)</label>
+        <input type="number" class="property-input" id="defaultWallHeight" value="3" min="2" max="6" step="0.1">
+        
+        <label class="property-label">Default Floor Height (m)</label>
+        <input type="number" class="property-input" id="defaultFloorHeight" value="3" min="2" max="6" step="0.1">
+      </div>
+    </aside>
   </div>
   
   <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
   <script>
-    // State
-    let floorPlanImage = null;
-    let detectedLines = [];
-    let detectedWalls = [];
-    let currentView = 'floorplan';
-    let is3DGenerated = false;
+    // ==================== STATE ====================
+    const state = {
+      elements: [],
+      selectedElement: null,
+      currentTool: 'select',
+      showGrid: true,
+      gridSize: 50, // pixels per meter
+      defaultWallHeight: 3,
+      defaultFloorHeight: 3,
+      isDragging: false,
+      dragOffset: { x: 0, y: 0 },
+      currentView: '2d'
+    };
     
-    // Three.js
-    let scene, camera, renderer, house;
-    let isRotating = true;
-    let isDragging = false;
-    let prevMouse = { x: 0, y: 0 };
+    // ==================== CANVAS ====================
+    const canvas = document.getElementById('builderCanvas');
+    const ctx = canvas.getContext('2d');
+    const container = document.getElementById('canvasContainer');
     
-    // Elements
-    const dropZone = document.getElementById('dropZone');
-    const previewImg = document.getElementById('previewImg');
-    const generateBtn = document.getElementById('generateBtn');
-    const exportBtn = document.getElementById('exportBtn');
-    const status = document.getElementById('status');
-    const floorplanCanvas = document.getElementById('floorplanCanvas');
-    const modelCanvas = document.getElementById('modelCanvas');
-    const emptyState = document.getElementById('emptyState');
-    const instructions = document.getElementById('instructions');
-    const viewControls = document.getElementById('viewControls');
-    const wallHeight = document.getElementById('wallHeight');
-    const wallThickness = document.getElementById('wallThickness');
-    const wallColor = document.getElementById('wallColor');
-    const bgColor = document.getElementById('bgColor');
-    
-    // Setup
-    function setupFloorplanCanvas() {
-      const container = floorplanCanvas.parentElement;
-      floorplanCanvas.width = container.clientWidth;
-      floorplanCanvas.height = container.clientHeight;
-      drawFloorplan();
+    function resizeCanvas() {
+      canvas.width = container.clientWidth;
+      canvas.height = container.clientHeight;
+      draw();
     }
     
-    function drawFloorplan() {
-      const ctx = floorplanCanvas.getContext('2d');
-      const w = floorplanCanvas.width;
-      const h = floorplanCanvas.height;
+    resizeCanvas();
+    window.addEventListener('resize', resizeCanvas);
+    
+    // ==================== DRAW ====================
+    function draw() {
+      ctx.fillStyle = '#0f1419';
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
       
-      ctx.fillStyle = '#0f172a';
-      ctx.fillRect(0, 0, w, h);
+      // Grid
+      if (state.showGrid) {
+        drawGrid();
+      }
       
-      if (!floorPlanImage) return;
+      // Elements
+      state.elements.forEach(el => drawElement(el));
       
-      // Draw image scaled to fit
-      const scale = Math.min(w / floorPlanImage.width, h / floorPlanImage.height) * 0.85;
-      const x = (w - floorPlanImage.width * scale) / 2;
-      const y = (h - floorPlanImage.height * scale) / 2;
-      
-      ctx.drawImage(floorPlanImage, x, y, floorPlanImage.width * scale, floorPlanImage.height * scale);
-      
-      // Draw detected lines
-      if (detectedLines.length > 0) {
-        ctx.strokeStyle = '#f59e0b';
-        ctx.lineWidth = 2;
-        detectedLines.forEach(line => {
-          ctx.beginPath();
-          ctx.moveTo(x + line.x1 * scale, y + line.y1 * scale);
-          ctx.lineTo(x + line.x2 * scale, y + line.y2 * scale);
-          ctx.stroke();
-        });
+      // Selection
+      if (state.selectedElement) {
+        drawSelection(state.selectedElement);
       }
     }
     
+    function drawGrid() {
+      const gs = state.gridSize;
+      ctx.strokeStyle = 'rgba(255,255,255,0.05)';
+      ctx.lineWidth = 1;
+      
+      for (let x = 0; x < canvas.width; x += gs) {
+        ctx.beginPath();
+        ctx.moveTo(x, 0);
+        ctx.lineTo(x, canvas.height);
+        ctx.stroke();
+      }
+      
+      for (let y = 0; y < canvas.height; y += gs) {
+        ctx.beginPath();
+        ctx.moveTo(0, y);
+        ctx.lineTo(canvas.width, y);
+        ctx.stroke();
+      }
+      
+      // Major grid (every 5m)
+      const majorGs = gs * 5;
+      ctx.strokeStyle = 'rgba(255,255,255,0.1)';
+      for (let x = 0; x < canvas.width; x += majorGs) {
+        ctx.beginPath();
+        ctx.moveTo(x, 0);
+        ctx.lineTo(x, canvas.height);
+        ctx.stroke();
+      }
+      for (let y = 0; y < canvas.height; y += majorGs) {
+        ctx.beginPath();
+        ctx.moveTo(0, y);
+        ctx.lineTo(canvas.width, y);
+        ctx.stroke();
+      }
+    }
+    
+    function drawElement(el) {
+      const x = el.x * state.gridSize;
+      const y = el.y * state.gridSize;
+      const w = el.width * state.gridSize;
+      const h = el.height * state.gridSize;
+      
+      ctx.fillStyle = el.color || '#e5e5e5';
+      ctx.strokeStyle = 'rgba(255,255,255,0.3)';
+      ctx.lineWidth = 2;
+      
+      switch(el.type) {
+        case 'wall':
+          ctx.fillRect(x, y, w, h);
+          ctx.strokeRect(x, y, w, h);
+          break;
+          
+        case 'floor':
+          ctx.fillStyle = el.color || '#475569';
+          ctx.fillRect(x, y, w, h);
+          // Floor pattern
+          ctx.strokeStyle = 'rgba(255,255,255,0.1)';
+          for (let i = 0; i < w; i += state.gridSize) {
+            ctx.beginPath();
+            ctx.moveTo(x + i, y);
+            ctx.lineTo(x + i, y + h);
+            ctx.stroke();
+          }
+          for (let i = 0; i < h; i += state.gridSize) {
+            ctx.beginPath();
+            ctx.moveTo(x, y + i);
+            ctx.lineTo(x + w, y + i);
+            ctx.stroke();
+          }
+          break;
+          
+        case 'door':
+          ctx.fillStyle = '#92400e';
+          ctx.fillRect(x, y, w, h);
+          // Door arc
+          ctx.strokeStyle = '#f59e0b';
+          ctx.lineWidth = 2;
+          ctx.beginPath();
+          ctx.arc(x, y + h, w, -Math.PI/2, 0);
+          ctx.stroke();
+          break;
+          
+        case 'window':
+          ctx.fillStyle = '#3b82f6';
+          ctx.fillRect(x, y, w, h);
+          // Window panes
+          ctx.strokeStyle = '#fff';
+          ctx.lineWidth = 1;
+          ctx.beginPath();
+          ctx.moveTo(x + w/2, y);
+          ctx.lineTo(x + w/2, y + h);
+          ctx.stroke();
+          break;
+          
+        case 'roof':
+          ctx.fillStyle = el.color || '#7c2d12';
+          ctx.beginPath();
+          ctx.moveTo(x, y + h);
+          ctx.lineTo(x + w/2, y);
+          ctx.lineTo(x + w, y + h);
+          ctx.closePath();
+          ctx.fill();
+          break;
+          
+        case 'pillar':
+          ctx.fillStyle = el.color || '#71717a';
+          const rx = x + w/2;
+          const ry = y + h/2;
+          const r = Math.min(w, h) / 2;
+          ctx.beginPath();
+          ctx.arc(rx, ry, r, 0, Math.PI * 2);
+          ctx.fill();
+          break;
+          
+        default:
+          ctx.fillRect(x, y, w, h);
+      }
+      
+      // Label
+      if (el.name) {
+        ctx.fillStyle = '#fff';
+        ctx.font = '10px Inter';
+        ctx.fillText(el.name, x + 4, y + 14);
+      }
+    }
+    
+    function drawSelection(el) {
+      const x = el.x * state.gridSize;
+      const y = el.y * state.gridSize;
+      const w = el.width * state.gridSize;
+      const h = el.height * state.gridSize;
+      
+      ctx.strokeStyle = '#f59e0b';
+      ctx.lineWidth = 2;
+      ctx.setLineDash([5, 5]);
+      ctx.strokeRect(x - 4, y - 4, w + 8, h + 8);
+      ctx.setLineDash([]);
+      
+      // Resize handles
+      const handleSize = 8;
+      ctx.fillStyle = '#f59e0b';
+      const handles = [
+        [x - handleSize/2, y - handleSize/2],
+        [x + w - handleSize/2, y - handleSize/2],
+        [x - handleSize/2, y + h - handleSize/2],
+        [x + w - handleSize/2, y + h - handleSize/2]
+      ];
+      handles.forEach(([hx, hy]) => {
+        ctx.fillRect(hx, hy, handleSize, handleSize);
+      });
+    }
+    
+    // ==================== ELEMENTS ====================
+    function addElement(type, options = {}) {
+      const defaults = {
+        wall: { width: 3, height: 0.3, color: '#e5e5e5' },
+        floor: { width: 4, height: 4, color: '#475569' },
+        door: { width: 1, height: 0.2, color: '#92400e' },
+        window: { width: 1.5, height: 0.2, color: '#3b82f6' },
+        roof: { width: 5, height: 0.3, color: '#7c2d12' },
+        pillar: { width: 0.3, height: 0.3, color: '#71717a' }
+      };
+      
+      const def = defaults[type] || { width: 1, height: 1 };
+      
+      const element = {
+        id: Date.now(),
+        type: type,
+        name: type.charAt(0).toUpperCase() + type.slice(1) + ' ' + (state.elements.length + 1),
+        x: options.x || 2,
+        y: options.y || 2,
+        width: options.width || def.width,
+        height: options.height || def.height,
+        color: options.color || def.color,
+        height3d: type === 'wall' ? state.defaultWallHeight : 3
+      };
+      
+      state.elements.push(element);
+      selectElement(element);
+      updateElementList();
+      draw();
+      setStatus(`Added ${element.name}`);
+    }
+    
+    function addRoom(width, height) {
+      const roomElements = [];
+      const startX = 2;
+      const startY = 2;
+      
+      // Bottom wall
+      roomElements.push({ type: 'wall', x: startX, y: startY + height, width: width, height: 0.3 });
+      // Top wall
+      roomElements.push({ type: 'wall', x: startX, y: startY - 0.3, width: width, height: 0.3 });
+      // Left wall
+      roomElements.push({ type: 'wall', x: startX - 0.3, y: startY, width: 0.3, height: height });
+      // Right wall
+      roomElements.push({ type: 'wall', x: startX + width, y: startY, width: 0.3, height: height });
+      // Floor
+      roomElements.push({ type: 'floor', x: startX, y: startY, width: width, height: height });
+      
+      roomElements.forEach(el => addElement(el.type, el));
+    }
+    
+    function deleteElement(id) {
+      state.elements = state.elements.filter(el => el.id !== id);
+      if (state.selectedElement?.id === id) {
+        state.selectedElement = null;
+        hideProperties();
+      }
+      updateElementList();
+      draw();
+      setStatus('Element deleted');
+    }
+    
+    function selectElement(element) {
+      state.selectedElement = element;
+      if (element) {
+        showProperties(element);
+      } else {
+        hideProperties();
+      }
+      draw();
+    }
+    
+    function findElementAt(x, y) {
+      const mx = x / state.gridSize;
+      const my = y / state.gridSize;
+      
+      // Check in reverse order (top elements first)
+      for (let i = state.elements.length - 1; i >= 0; i--) {
+        const el = state.elements[i];
+        if (mx >= el.x && mx <= el.x + el.width &&
+            my >= el.y && my <= el.y + el.height) {
+          return el;
+        }
+      }
+      return null;
+    }
+    
+    // ==================== PROPERTIES PANEL ====================
+    function showProperties(el) {
+      document.getElementById('noSelection').style.display = 'none';
+      document.getElementById('elementProps').style.display = 'block';
+      
+      document.getElementById('propType').value = el.type;
+      document.getElementById('propX').value = el.x.toFixed(2);
+      document.getElementById('propY').value = el.y.toFixed(2);
+      document.getElementById('propW').value = el.width.toFixed(2);
+      document.getElementById('propH').value = el.height.toFixed(2);
+      document.getElementById('propHeight').value = el.height3d || 3;
+      document.getElementById('propColor').value = el.color || '#e5e5e5';
+    }
+    
+    function hideProperties() {
+      document.getElementById('noSelection').style.display = 'block';
+      document.getElementById('elementProps').style.display = 'none';
+    }
+    
+    function updateProperties() {
+      const el = state.selectedElement;
+      if (!el) return;
+      
+      el.x = parseFloat(document.getElementById('propX').value) || 0;
+      el.y = parseFloat(document.getElementById('propY').value) || 0;
+      el.width = parseFloat(document.getElementById('propW').value) || 1;
+      el.height = parseFloat(document.getElementById('propH').value) || 1;
+      el.height3d = parseFloat(document.getElementById('propHeight').value) || 3;
+      el.color = document.getElementById('propColor').value;
+      
+      draw();
+    }
+    
+    function updateElementList() {
+      const list = document.getElementById('elementList');
+      document.getElementById('elementCount').textContent = state.elements.length;
+      
+      list.innerHTML = state.elements.map(el => `
+        <div class="element-item ${state.selectedElement?.id === el.id ? 'selected' : ''}" data-id="${el.id}">
+          <div class="element-info">
+            <span class="element-icon">${getTypeIcon(el.type)}</span>
+            <span class="element-name">${el.name}</span>
+          </div>
+          <button class="element-delete" data-id="${el.id}">×</button>
+        </div>
+      `).join('');
+      
+      // Add click handlers
+      list.querySelectorAll('.element-item').forEach(item => {
+        item.addEventListener('click', (e) => {
+          if (!e.target.classList.contains('element-delete')) {
+            const id = parseInt(item.dataset.id);
+            const el = state.elements.find(el => el.id === id);
+            selectElement(el);
+          }
+        });
+      });
+      
+      list.querySelectorAll('.element-delete').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+          e.stopPropagation();
+          deleteElement(parseInt(btn.dataset.id));
+        });
+      });
+    }
+    
+    function getTypeIcon(type) {
+      const icons = {
+        wall: '🧱', floor: '⬜', door: '🚪', window: '🪟', roof: '�三角', pillar: '柱'
+      };
+      return icons[type] || '📦';
+    }
+    
+    // ==================== EVENTS ====================
+    // Canvas click
+    canvas.addEventListener('click', (e) => {
+      const rect = canvas.getBoundingClientRect();
+      const x = e.clientX - rect.left;
+      const y = e.clientY - rect.top;
+      
+      if (state.currentTool === 'select') {
+        const el = findElementAt(x, y);
+        selectElement(el);
+      }
+    });
+    
+    // Canvas drag
+    canvas.addEventListener('mousedown', (e) => {
+      if (state.currentTool === 'move' || state.currentTool === 'select') {
+        const rect = canvas.getBoundingClientRect();
+        const x = e.clientX - rect.left;
+        const y = e.clientY - rect.top;
+        
+        const el = findElementAt(x, y);
+        if (el) {
+          selectElement(el);
+          state.isDragging = true;
+          state.dragOffset = {
+            x: x / state.gridSize - el.x,
+            y: y / state.gridSize - el.y
+          };
+        }
+      }
+    });
+    
+    canvas.addEventListener('mousemove', (e) => {
+      const rect = canvas.getBoundingClientRect();
+      const x = e.clientX - rect.left;
+      const y = e.clientY - rect.top;
+      
+      // Update coords
+      document.getElementById('coords').textContent = 
+        `X: ${(x / state.gridSize).toFixed(2)}m | Y: ${(y / state.gridSize).toFixed(2)}m`;
+      
+      if (state.isDragging && state.selectedElement) {
+        state.selectedElement.x = Math.max(0, x / state.gridSize - state.dragOffset.x);
+        state.selectedElement.y = Math.max(0, y / state.gridSize - state.dragOffset.y);
+        updateProperties();
+        draw();
+      }
+    });
+    
+    canvas.addEventListener('mouseup', () => {
+      state.isDragging = false;
+    });
+    
+    // Drag and drop from components
+    document.querySelectorAll('.component-item').forEach(item => {
+      item.addEventListener('click', () => {
+        const type = item.dataset.type;
+        
+        if (type === 'room-3x3') addRoom(3, 3);
+        else if (type === 'room-4x4') addRoom(4, 4);
+        else if (type === 'room-5x4') addRoom(5, 4);
+        else if (type === 'corridor') addElement('wall', { width: 6, height: 0.3 });
+        else addElement(type);
+      });
+    });
+    
+    // Property inputs
+    ['propX', 'propY', 'propW', 'propH', 'propHeight'].forEach(id => {
+      document.getElementById(id)?.addEventListener('change', updateProperties);
+    });
+    
+    document.getElementById('propColor')?.addEventListener('input', updateProperties);
+    
+    // Quick sizes
+    document.querySelectorAll('.size-chip').forEach(chip => {
+      chip.addEventListener('click', () => {
+        if (state.selectedElement) {
+          const size = parseFloat(chip.dataset.size);
+          state.selectedElement.width = size;
+          state.selectedElement.height = state.selectedElement.type === 'wall' ? 0.3 : size;
+          updateProperties();
+          updateElementList();
+        }
+      });
+    });
+    
+    // Delete element button
+    document.getElementById('deleteElement')?.addEventListener('click', () => {
+      if (state.selectedElement) {
+        deleteElement(state.selectedElement.id);
+      }
+    });
+    
+    // Toolbar buttons
+    document.querySelectorAll('.tool-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        document.querySelectorAll('.tool-btn').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        state.currentTool = btn.id.replace('Tool', '');
+        
+        if (state.currentTool === 'delete') {
+          canvas.style.cursor = 'not-allowed';
+        } else if (state.currentTool === 'move') {
+          canvas.style.cursor = 'move';
+        } else {
+          canvas.style.cursor = 'default';
+        }
+      });
+    });
+    
+    // Delete tool click
+    canvas.addEventListener('click', (e) => {
+      if (state.currentTool === 'delete') {
+        const rect = canvas.getBoundingClientRect();
+        const x = e.clientX - rect.left;
+        const y = e.clientY - rect.top;
+        const el = findElementAt(x, y);
+        if (el) deleteElement(el.id);
+      }
+    });
+    
+    // View modes
+    document.querySelectorAll('.view-mode').forEach(btn => {
+      btn.addEventListener('click', () => {
+        document.querySelectorAll('.view-mode').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        
+        const view = btn.dataset.view;
+        state.currentView = view;
+        
+        if (view === '3d') {
+          canvas.style.display = 'none';
+          document.getElementById('threeCanvas').classList.add('visible');
+          initThreeJS();
+          generate3D();
+        } else {
+          canvas.style.display = 'block';
+          document.getElementById('threeCanvas').classList.remove('visible');
+        }
+      });
+    });
+    
+    // Grid toggle
+    document.getElementById('gridToggle')?.addEventListener('change', (e) => {
+      state.showGrid = e.target.checked;
+      draw();
+    });
+    
+    // Save/Load/Export
+    document.getElementById('newBtn')?.addEventListener('click', () => {
+      if (confirm('Create new project? Unsaved changes will be lost.')) {
+        state.elements = [];
+        state.selectedElement = null;
+        hideProperties();
+        updateElementList();
+        draw();
+        setStatus('New project created');
+      }
+    });
+    
+    document.getElementById('saveBtn')?.addEventListener('click', async () => {
+      const data = { elements: state.elements, settings: { gridSize: state.gridSize } };
+      const path = await window.electronAPI.saveProject(data);
+      if (path) setStatus('Project saved');
+    });
+    
+    document.getElementById('loadBtn')?.addEventListener('click', async () => {
+      const data = await window.electronAPI.loadProject();
+      if (data) {
+        state.elements = data.elements || [];
+        state.gridSize = data.settings?.gridSize || 50;
+        state.selectedElement = null;
+        hideProperties();
+        updateElementList();
+        draw();
+        setStatus('Project loaded');
+      }
+    });
+    
+    document.getElementById('exportImgBtn')?.addEventListener('click', async () => {
+      const dataUrl = canvas.toDataURL('image/png');
+      const path = await window.electronAPI.exportImage(dataUrl);
+      if (path) setStatus('Image exported');
+    });
+    
+    document.getElementById('export3dBtn')?.addEventListener('click', async () => {
+      const obj = generateOBJ();
+      const path = await window.electronAPI.export3D(obj, 'obj');
+      if (path) setStatus('3D model exported');
+    });
+    
+    // ==================== THREE.JS ====================
+    let scene, camera, renderer, house;
+    
     function initThreeJS() {
-      const container = modelCanvas.parentElement;
+      const threeCanvas = document.getElementById('threeCanvas');
+      if (scene) return;
       
       scene = new THREE.Scene();
-      scene.background = new THREE.Color(bgColor.value);
+      scene.background = new THREE.Color(0x1e293b);
       
+      const container = threeCanvas.parentElement;
       camera = new THREE.PerspectiveCamera(45, container.clientWidth / container.clientHeight, 0.1, 1000);
       camera.position.set(15, 12, 15);
       camera.lookAt(0, 0, 0);
       
-      renderer = new THREE.WebGLRenderer({ canvas: modelCanvas, antialias: true });
+      renderer = new THREE.WebGLRenderer({ canvas: threeCanvas, antialias: true });
       renderer.setSize(container.clientWidth, container.clientHeight);
-      renderer.setPixelRatio(window.devicePixelRatio);
       renderer.shadowMap.enabled = true;
       
       // Lights
-      const ambient = new THREE.AmbientLight(0xffffff, 0.6);
-      scene.add(ambient);
-      
-      const directional = new THREE.DirectionalLight(0xffffff, 0.8);
-      directional.position.set(10, 20, 10);
-      directional.castShadow = true;
-      scene.add(directional);
+      scene.add(new THREE.AmbientLight(0xffffff, 0.5));
+      const dir = new THREE.DirectionalLight(0xffffff, 0.8);
+      dir.position.set(10, 20, 10);
+      dir.castShadow = true;
+      scene.add(dir);
       
       // Ground
-      const groundGeo = new THREE.PlaneGeometry(30, 30);
-      const groundMat = new THREE.MeshStandardMaterial({ color: 0x334155 });
-      const ground = new THREE.Mesh(groundGeo, groundMat);
+      const ground = new THREE.Mesh(
+        new THREE.PlaneGeometry(30, 30),
+        new THREE.MeshStandardMaterial({ color: 0x334155 })
+      );
       ground.rotation.x = -Math.PI / 2;
-      ground.position.y = -0.01;
       ground.receiveShadow = true;
       scene.add(ground);
       
-      animate3D();
-    }
-    
-    function animate3D() {
-      requestAnimationFrame(animate3D);
-      
-      if (house && isRotating) {
-        house.rotation.y += 0.003;
+      function animate() {
+        requestAnimationFrame(animate);
+        if (house) house.rotation.y += 0.002;
+        renderer.render(scene, camera);
       }
+      animate();
       
-      renderer.render(scene, camera);
+      window.addEventListener('resize', () => {
+        camera.aspect = container.clientWidth / container.clientHeight;
+        camera.updateProjectionMatrix();
+        renderer.setSize(container.clientWidth, container.clientHeight);
+      });
     }
     
-    function generate3DModel() {
+    function generate3D() {
       if (house) scene.remove(house);
-      
       house = new THREE.Group();
       
-      const h = parseFloat(wallHeight.value);
-      const t = parseFloat(wallThickness.value);
-      const color = wallColor.value;
-      
-      const wallMat = new THREE.MeshStandardMaterial({ 
-        color: color,
-        roughness: 0.8,
-        metalness: 0.1
+      state.elements.forEach(el => {
+        const h = el.height3d || 3;
+        let geo, mesh;
+        
+        switch(el.type) {
+          case 'wall':
+            geo = new THREE.BoxGeometry(el.width, h, el.height);
+            mesh = new THREE.Mesh(geo, new THREE.MeshStandardMaterial({ color: el.color || 0xe5e5e5 }));
+            mesh.position.set(el.x + el.width/2, h/2, el.y + el.height/2);
+            break;
+            
+          case 'floor':
+            geo = new THREE.BoxGeometry(el.width, 0.1, el.height);
+            mesh = new THREE.Mesh(geo, new THREE.MeshStandardMaterial({ color: el.color || 0x475569 }));
+            mesh.position.set(el.x + el.width/2, 0.05, el.y + el.height/2);
+            break;
+            
+          case 'door':
+            geo = new THREE.BoxGeometry(el.width, h, 0.1);
+            mesh = new THREE.Mesh(geo, new THREE.MeshStandardMaterial({ color: 0x92400e }));
+            mesh.position.set(el.x + el.width/2, h/2, el.y + el.height);
+            break;
+            
+          case 'window':
+            geo = new THREE.BoxGeometry(el.width, h * 0.6, 0.1);
+            mesh = new THREE.Mesh(geo, new THREE.MeshStandardMaterial({ 
+              color: 0x3b82f6, transparent: true, opacity: 0.6 
+            }));
+            mesh.position.set(el.x + el.width/2, h * 0.6, el.y);
+            break;
+            
+          case 'roof':
+            geo = new THREE.ConeGeometry(Math.max(el.width, el.height) / 2, 1.5, 4);
+            mesh = new THREE.Mesh(geo, new THREE.MeshStandardMaterial({ color: el.color || 0x7c2d12 }));
+            mesh.position.set(el.x + el.width/2, h + 0.75, el.y + el.height/2);
+            mesh.rotation.y = Math.PI / 4;
+            break;
+            
+          case 'pillar':
+            geo = new THREE.CylinderGeometry(0.15, 0.15, h, 16);
+            mesh = new THREE.Mesh(geo, new THREE.MeshStandardMaterial({ color: el.color || 0x71717a }));
+            mesh.position.set(el.x + el.width/2, h/2, el.y + el.height/2);
+            break;
+        }
+        
+        if (mesh) {
+          mesh.castShadow = true;
+          mesh.receiveShadow = true;
+          house.add(mesh);
+        }
       });
       
-      // Generate walls from detected lines or create default box
-      if (detectedLines.length > 0) {
-        detectedLines.forEach(line => {
-          const length = Math.sqrt(
-            Math.pow(line.x2 - line.x1, 2) + 
-            Math.pow(line.y2 - line.y1, 2)
-          );
-          
-          if (length > 10) { // Filter short lines
-            const centerX = (line.x1 + line.x2) / 2;
-            const centerY = h / 2;
-            const centerZ = (line.y1 + line.y2) / 2;
-            
-            const angle = Math.atan2(line.y2 - line.y1, line.x2 - line.x1);
-            
-            const wallGeo = new THREE.BoxGeometry(length, h, t);
-            const wall = new THREE.Mesh(wallGeo, wallMat);
-            
-            wall.position.set(centerX, centerY, centerZ);
-            wall.rotation.y = -angle;
-            wall.castShadow = true;
-            wall.receiveShadow = true;
-            
-            house.add(wall);
-          }
-        });
-      } else {
-        // Default: simple room
-        const roomSize = 8;
-        const wallGeo = new THREE.BoxGeometry(roomSize, h, t);
-        
-        // 4 walls
-        const positions = [
-          [0, h/2, -roomSize/2],
-          [0, h/2, roomSize/2],
-          [-roomSize/2, h/2, 0],
-          [roomSize/2, h/2, 0]
-        ];
-        
-        const rotations = [0, 0, Math.PI/2, Math.PI/2];
-        
-        positions.forEach((pos, i) => {
-          const wall = new THREE.Mesh(wallGeo, wallMat);
-          wall.position.set(...pos);
-          wall.rotation.y = rotations[i];
-          wall.castShadow = true;
-          house.add(wall);
-        });
-      }
-      
       scene.add(house);
-      
-      // Reset camera
-      camera.position.set(15, 12, 15);
-      camera.lookAt(0, 0, 0);
     }
     
-    // Event Handlers
-    dropZone.addEventListener('click', async () => {
-      const path = await window.electronAPI.selectImage();
-      if (path) {
-        loadImage(path);
-      }
-    });
-    
-    dropZone.addEventListener('dragover', (e) => {
-      e.preventDefault();
-      dropZone.classList.add('active');
-    });
-    
-    dropZone.addEventListener('dragleave', () => {
-      dropZone.classList.remove('active');
-    });
-    
-    function loadImage(path) {
-      const img = new Image();
-      img.onload = () => {
-        floorPlanImage = img;
-        previewImg.src = path;
-        previewImg.classList.add('visible');
-        emptyState.style.display = 'none';
-        
-        setupFloorplanCanvas();
-        
-        // Process with OpenCV
-        showStatus('Detecting walls...', 'processing');
-        
-        window.electronAPI.processFloorplan(path, {}).then(result => {
-          if (result.error) {
-            showStatus('Using default layout', 'processing');
-            detectedLines = [];
-          } else {
-            detectedLines = result.lines || [];
-            detectedWalls = result.walls || [];
-          }
-          
-          drawFloorplan();
-          showStatus('Floor plan loaded! Click Generate', 'success');
-          generateBtn.disabled = false;
-        }).catch(err => {
-          showStatus('Loaded image (detection unavailable)', 'success');
-          generateBtn.disabled = false;
-        });
-      };
-      img.src = 'file://' + path;
-    }
-    
-    generateBtn.addEventListener('click', () => {
-      showStatus('Generating 3D model...', 'processing');
-      
-      setTimeout(() => {
-        generate3DModel();
-        
-        // Switch to 3D view
-        document.querySelector('[data-view="3d"]').click();
-        
-        showStatus('3D model generated!', 'success');
-        exportBtn.style.display = 'flex';
-        instructions.style.display = 'block';
-        viewControls.style.display = 'flex';
-      }, 500);
-    });
-    
-    exportBtn.addEventListener('click', async () => {
-      // Simple OBJ export
-      let objContent = '# FloorPlan 3D Export\n\n';
+    function generateOBJ() {
+      let obj = '# FloorPlan 3D Export\n\n';
       
       if (house) {
         house.traverse(child => {
@@ -690,122 +1187,36 @@
             const pos = child.geometry.attributes.position;
             const matrix = child.matrixWorld;
             
-            objContent += `o Wall\n`;
+            obj += 'o Element\n';
             
             for (let i = 0; i < pos.count; i++) {
               const v = new THREE.Vector3(pos.getX(i), pos.getY(i), pos.getZ(i));
               v.applyMatrix4(matrix);
-              objContent += `v ${v.x.toFixed(4)} ${v.y.toFixed(4)} ${v.z.toFixed(4)}\n`;
+              obj += `v ${v.x.toFixed(4)} ${v.y.toFixed(4)} ${v.z.toFixed(4)}\n`;
             }
             
             const indices = child.geometry.index;
             if (indices) {
               for (let i = 0; i < indices.count; i += 3) {
-                objContent += `f ${indices.getX(i)+1} ${indices.getX(i+1)+1} ${indices.getX(i+2)+1}\n`;
+                obj += `f ${indices.getX(i)+1} ${indices.getX(i+1)+1} ${indices.getX(i+2)+1}\n`;
               }
             }
+            obj += '\n';
           }
         });
       }
       
-      await window.electronAPI.export3D(objContent, 'obj');
-      showStatus('Model exported!', 'success');
-    });
+      return obj;
+    }
     
-    // View tabs
-    document.querySelectorAll('.view-tab').forEach(tab => {
-      tab.addEventListener('click', () => {
-        document.querySelectorAll('.view-tab').forEach(t => t.classList.remove('active'));
-        tab.classList.add('active');
-        
-        const view = tab.dataset.view;
-        
-        if (view === 'floorplan') {
-          floorplanCanvas.classList.remove('hidden');
-          modelCanvas.classList.remove('visible');
-          instructions.style.display = 'none';
-        } else {
-          floorplanCanvas.classList.add('hidden');
-          modelCanvas.classList.add('visible');
-          instructions.style.display = 'block';
-        }
-      });
-    });
-    
-    // View controls
-    document.getElementById('rotateMode').addEventListener('click', function() {
-      isRotating = !isRotating;
-      this.classList.toggle('active', isRotating);
-    });
-    
-    document.getElementById('resetView').addEventListener('click', () => {
-      camera.position.set(15, 12, 15);
-      camera.lookAt(0, 0, 0);
-      if (house) house.rotation.y = 0;
-    });
-    
-    // Mouse controls for 3D
-    modelCanvas.addEventListener('mousedown', (e) => {
-      isDragging = true;
-      prevMouse = { x: e.clientX, y: e.clientY };
-    });
-    
-    modelCanvas.addEventListener('mousemove', (e) => {
-      if (!isDragging || !house) return;
-      
-      const dx = e.clientX - prevMouse.x;
-      const dy = e.clientY - prevMouse.y;
-      
-      house.rotation.y += dx * 0.01;
-      house.rotation.x += dy * 0.01;
-      
-      prevMouse = { x: e.clientX, y: e.clientY };
-    });
-    
-    modelCanvas.addEventListener('mouseup', () => isDragging = false);
-    modelCanvas.addEventListener('wheel', (e) => {
-      e.preventDefault();
-      camera.position.z += e.deltaY * 0.02;
-      camera.position.z = Math.max(5, Math.min(30, camera.position.z));
-    });
-    
-    // Settings changes
-    wallHeight.addEventListener('input', () => {
-      document.getElementById('wallHeightVal').textContent = wallHeight.value + 'm';
-      if (is3DGenerated) generate3DModel();
-    });
-    
-    wallThickness.addEventListener('input', () => {
-      document.getElementById('wallThicknessVal').textContent = wallThickness.value + 'm';
-      if (is3DGenerated) generate3DModel();
-    });
-    
-    wallColor.addEventListener('input', () => {
-      if (is3DGenerated) generate3DModel();
-    });
-    
-    bgColor.addEventListener('input', () => {
-      if (scene) scene.background = new THREE.Color(bgColor.value);
-    });
-    
-    function showStatus(msg, type) {
-      status.textContent = msg;
-      status.className = 'status visible ' + type;
+    // ==================== UTILS ====================
+    function setStatus(text) {
+      document.getElementById('statusText').textContent = text;
     }
     
     // Initialize
-    window.addEventListener('resize', () => {
-      setupFloorplanCanvas();
-      if (scene) {
-        const container = modelCanvas.parentElement;
-        camera.aspect = container.clientWidth / container.clientHeight;
-        camera.updateProjectionMatrix();
-        renderer.setSize(container.clientWidth, container.clientHeight);
-      }
-    });
-    
-    initThreeJS();
-    setupFloorplanCanvas();
+    draw();
+    setStatus('Ready - Drag components or click to add');
   </script>
 </body>
 </html>

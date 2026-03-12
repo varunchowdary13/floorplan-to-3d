@@ -1,7 +1,8 @@
 const { contextBridge, ipcRenderer } = require('electron');
 
 contextBridge.exposeInMainWorld('electronAPI', {
-  selectImage: () => ipcRenderer.invoke('select-image'),
-  processFloorplan: (imagePath, options) => ipcRenderer.invoke('process-floorplan', imagePath, options),
-  export3D: (modelData, format) => ipcRenderer.invoke('export-3d', modelData, format)
+  saveProject: (data) => ipcRenderer.invoke('save-project', data),
+  loadProject: () => ipcRenderer.invoke('load-project'),
+  export3D: (data, format) => ipcRenderer.invoke('export-3d', data, format),
+  exportImage: (dataUrl) => ipcRenderer.invoke('export-image', dataUrl)
 });

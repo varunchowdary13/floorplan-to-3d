@@ -1,71 +1,90 @@
-# FloorPlan to 3D Converter
+# FloorPlan 3D Builder
 
-Convert architectural floor plans (drawings) to 3D house models.
+Professional architectural design tool for creating floor plans and converting them to 3D house models.
 
 ## Features
 
-- 📐 Upload floor plan images (JPG, PNG, BMP)
-- 🔍 Auto-detect walls using OpenCV
-- 🎨 Adjust wall height, thickness, and colors
-- 🏠 Generate 3D house model instantly
-- 🔄 Interactive 3D viewer (rotate, zoom)
-- 💾 Export to OBJ format
+### 🧱 Structure Components
+- **Walls** - Drag to add, adjustable thickness
+- **Floors** - Room floors with grid pattern
+- **Doors** - With arc swing visualization
+- **Windows** - Transparent panes
+- **Roofs** - Triangular roof shapes
+- **Pillars** - Circular support columns
 
-## Requirements
+### 📐 Builder Tools
+- **Drag & Drop** - Click components to add
+- **Quick Rooms** - Pre-made room templates (3×3, 4×4, 5×4)
+- **Move Tool** - Drag elements around
+- **Delete/Duplicate** - Manage elements
+- **Grid System** - 1m grid with measurements
 
-- Windows 10/11
-- Python 3.8+ (for wall detection)
-- OpenCV (`pip install opencv-python`)
+### 📏 Properties Panel
+- **Position** - X, Y coordinates in meters
+- **Size** - Width, Height in meters
+- **Quick Sizes** - Preset 1m-6m options
+- **Height** - For 3D generation (2-6m)
+- **Color** - Custom element colors
 
-## Quick Start
+### 🏗️ 3D Features
+- **2D/3D Toggle** - Switch between views
+- **Auto-generate** - Convert plan to 3D
+- **Interactive Viewer** - Rotate, zoom
+- **Export OBJ** - Save 3D model
+
+### 💾 Project Management
+- **New** - Start fresh project
+- **Save** - Save as .fplan file
+- **Load** - Open saved projects
+- **Export Image** - Save floor plan as PNG
+- **Export 3D** - Export as OBJ file
+
+## Installation
 
 ```bash
-# Install dependencies
-cd floorplan-to-3d
 npm install
-
-# Install Python OpenCV
-pip install opencv-python numpy
-
-# Run
 npm start
 ```
 
 ## Usage
 
-1. **Upload** - Click the drop zone or browse to select a floor plan image
-2. **Adjust** - Set wall height (2-6m), thickness (0.1-0.5m), and colors
-3. **Generate** - Click "Generate 3D Model"
-4. **View** - Switch between 2D plan and 3D views
-5. **Export** - Save as OBJ file
+### Adding Elements
+1. Click any component in the left panel
+2. Element appears on canvas
+3. Click to select, drag to move
+4. Use properties panel to adjust
 
-## How It Works
+### Quick Rooms
+- Click "3×3 Room", "4×4 Room", etc.
+- Instantly adds walls + floor
 
-1. **Image Processing** - OpenCV detects lines/walls in the floor plan
-2. **3D Generation** - Lines are extruded to walls with specified height
-3. **Interactive Preview** - Three.js renders the 3D model
+### 3D Generation
+1. Design your floor plan in 2D
+2. Click "3D View" in toolbar
+3. Model auto-generates
+4. Export as OBJ
+
+## Controls
+
+| Tool | Function |
+|------|----------|
+| Select | Click to select elements |
+| Move | Drag elements |
+| Draw | (Coming soon) |
+| Measure | (Coming soon) |
+| Delete | Click element to remove |
+
+## Grid System
+
+- Small grid: 1m
+- Major grid: 5m
+- All measurements in real meters
 
 ## Tech Stack
 
 - **Desktop**: Electron
-- **UI**: HTML/CSS/JavaScript
-- **Image Processing**: Python + OpenCV
-- **3D Rendering**: Three.js
-
-## For Developers
-
-### Build for Windows
-
-```bash
-npm run build
-```
-
-### Adding AI Detection (Phase 2)
-
-Future versions can integrate:
-- Deep learning models for room detection
-- Automatic door/window recognition
-- Floor plan segmentation
+- **3D**: Three.js
+- **Export**: OBJ format
 
 ---
 
